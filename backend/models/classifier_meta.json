@@ -1,0 +1,19 @@
+{
+  "train_samples": 110,
+  "labels_module": [
+    "comptabilite",
+    "facturation",
+    "paie",
+    "rh",
+    "stock"
+  ],
+  "labels_type": [
+    "autre",
+    "base_de_donnees",
+    "calcul",
+    "configuration",
+    "interface",
+    "performance",
+    "permission"
+  ]
+}
