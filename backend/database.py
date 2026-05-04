@@ -6,7 +6,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://postgres:123456789@localhost/postgres",
+    "postgresql://postgres:salmi2003@localhost/postgres",
 )
 
 if DATABASE_URL.startswith("postgresql://") and "+pg8000" not in DATABASE_URL:
@@ -121,6 +121,20 @@ class ClientLogiciel(Base):
     version = Column(String, nullable=True)
     date_installation = Column(Date, nullable=True)
     actif = Column(Integer, default=1)
+
+
+class Notification(Base):
+    """Notifications envoyées au client quand un technicien répond à un ticket."""
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, nullable=False)
+    ticket_id = Column(Integer, nullable=True)
+    ticket_title = Column(String, nullable=True)
+    sender_name = Column(String, nullable=True)
+    message_preview = Column(Text, nullable=True)
+    is_read = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 Base.metadata.create_all(engine)

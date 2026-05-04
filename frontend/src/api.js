@@ -156,3 +156,23 @@ export function replyToTicket(ticketId, message) {
     body: JSON.stringify({ message }),
   });
 }
+
+export function fetchNotifications() {
+  return request("/notifications");
+}
+
+export function markNotificationRead(notificationId) {
+  return request(`/notifications/${notificationId}/read`, { method: "PATCH" });
+}
+
+export function markAllNotificationsRead() {
+  return request("/notifications/read-all", { method: "POST" });
+}
+
+export function technicianSendMessage(ticketId, message) {
+  return request(`/technician/tickets/${ticketId}/message`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+}

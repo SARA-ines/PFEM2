@@ -2,51 +2,22 @@ export default function MessageBubble({ msg }) {
   const isUser = msg.role === "user";
 
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: isUser ? "flex-end" : "flex-start",
-        marginBottom: 16,
-        alignItems: "flex-end",
-        gap: 10,
-      }}
-    >
+    <div className={`chat-message-row ${isUser ? "user" : "assistant"}`}>
       {!isUser && (
-        <div
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: "50%",
-            background: "linear-gradient(135deg, #2563eb, #7c3aed)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            fontSize: 15,
-            color: "#fff",
-            fontWeight: 700,
-          }}
-        >
-          B
-        </div>
+        <div className="chat-bot-avatar">B</div>
       )}
 
-      <div
-        style={{
-          maxWidth: "84%",
-          padding: "14px 18px",
-          borderRadius: isUser ? "20px 20px 6px 20px" : "6px 20px 20px 20px",
-          background: isUser ? "#2563eb" : "#ffffff",
-          color: isUser ? "#ffffff" : "#111827",
-          fontSize: 16,
-          lineHeight: 1.7,
-          boxShadow: "0 6px 18px rgba(15, 35, 65, 0.08)",
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-word",
-        }}
-      >
+      <div className={`chat-bubble ${isUser ? "user" : "assistant"}`}>
         {msg.content}
       </div>
+
+      {isUser && (
+        <div className="chat-user-avatar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v1h20v-1c0-3.3-6.7-5-10-5z"/>
+          </svg>
+        </div>
+      )}
     </div>
   );
 }

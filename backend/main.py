@@ -27,7 +27,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 
 from business_logic import rewrite_rag_solution
-from database import ClientLogiciel, ConversationSession, Logiciel, LogicielVersion, Message, SessionLocal, Ticket, User
+from database import ClientLogiciel, ConversationSession, Logiciel, LogicielVersion, Message, Notification, SessionLocal, Ticket, User
 from nlp_engine import analyze
 from preprocessing import prepare_ticket_text
 from rag_engine import rag
@@ -2584,6 +2584,10 @@ class ClientReplyRequest(BaseModel):
     message: str
 
 
+class TechnicianMessageRequest(BaseModel):
+    message: str
+
+
 @app.patch("/technician/tickets/priority")
 def update_ticket_priority(payload: UpdatePriorityRequest, authorization: str | None = Header(default=None)):
     get_authenticated_user(authorization, expected_role="technicien")
@@ -2622,9 +2626,21 @@ def technician_takeover(payload: TechnicianTakeOverRequest, authorization: str |
             ticket.assigned_to = full_user_name(auth_user)
             ticket.assignedDateTime = now
             ticket.etat = "attribue"
-            if payload.response.strip():
+            response_text = payload.response.strip()
+            if response_text:
                 existing = ticket.details or ""
-                ticket.details = existing + f"\n\n[Technicien {full_user_name(auth_user)}] {payload.response.strip()}"
+                ticket.details = existing + f"\n\n[Technicien {full_user_name(auth_user)}] {response_text}"
+                if ticket.user_id:
+                    notif = Notification(
+                        user_id=ticket.user_id,
+                        ticket_id=ticket.ticket_id,
+                        ticket_title=ticket.objet,
+                        sender_name=full_user_name(auth_user),
+                        message_preview=response_text[:200],
+                        is_read=0,
+                        created_at=now,
+                    )
+                    db.add(notif)
             db.commit()
             db.refresh(ticket)
             user_map, logiciel_map = load_reference_maps(db, [ticket])
@@ -2811,6 +2827,111 @@ def get_client_conversations(authorization: str | None = Header(default=None)):
 
     conversations.sort(key=lambda c: c["last_message_at"] or "", reverse=True)
     return {"conversations": conversations}
+
+
+# ─────────────────────────── NOTIFICATIONS ────────────────────────────────
+
+@app.get("/notifications")
+def get_notifications(authorization: str | None = Header(default=None)):
+    auth_user = get_authenticated_user(authorization, expected_role="client")
+    try:
+        with SessionLocal() as db:
+            notifs = (
+                db.query(Notification)
+                .filter(Notification.user_id == auth_user.user_id)
+                .order_by(Notification.created_at.desc().nullslast())
+                .limit(50)
+                .all()
+            )
+        return {
+            "notifications": [
+                {
+                    "id": n.id,
+                    "ticketId": n.ticket_id,
+                    "ticketTitle": n.ticket_title,
+                    "senderName": n.sender_name,
+                    "messagePreview": n.message_preview,
+                    "isRead": bool(n.is_read),
+                    "createdAt": n.created_at.isoformat() if n.created_at else None,
+                }
+                for n in notifs
+            ],
+            "unreadCount": sum(1 for n in notifs if not n.is_read),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.patch("/notifications/{notification_id}/read")
+def mark_notification_read(notification_id: int, authorization: str | None = Header(default=None)):
+    auth_user = get_authenticated_user(authorization, expected_role="client")
+    try:
+        with SessionLocal() as db:
+            notif = db.query(Notification).filter(
+                Notification.id == notification_id,
+                Notification.user_id == auth_user.user_id,
+            ).first()
+            if not notif:
+                raise HTTPException(status_code=404, detail="Notification introuvable.")
+            notif.is_read = 1
+            db.commit()
+        return {"message": "Notification marquée comme lue."}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/notifications/read-all")
+def mark_all_notifications_read(authorization: str | None = Header(default=None)):
+    auth_user = get_authenticated_user(authorization, expected_role="client")
+    try:
+        with SessionLocal() as db:
+            db.query(Notification).filter(
+                Notification.user_id == auth_user.user_id,
+                Notification.is_read == 0,
+            ).update({"is_read": 1})
+            db.commit()
+        return {"message": "Toutes les notifications marquées comme lues."}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/technician/tickets/{ticket_id}/message")
+def technician_send_message(
+    ticket_id: int,
+    payload: TechnicianMessageRequest,
+    authorization: str | None = Header(default=None),
+):
+    auth_user = get_authenticated_user(authorization, expected_role="technicien")
+    message = payload.message.strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Le message ne peut pas être vide.")
+    now = datetime.utcnow()
+    try:
+        with SessionLocal() as db:
+            ticket = db.query(Ticket).filter(Ticket.ticket_id == ticket_id).first()
+            if not ticket:
+                raise HTTPException(status_code=404, detail="Ticket introuvable.")
+            existing = ticket.details or ""
+            ticket.details = existing + f"\n\n[Technicien {full_user_name(auth_user)}] {message}"
+            if ticket.user_id:
+                notif = Notification(
+                    user_id=ticket.user_id,
+                    ticket_id=ticket.ticket_id,
+                    ticket_title=ticket.objet,
+                    sender_name=full_user_name(auth_user),
+                    message_preview=message[:200],
+                    is_read=0,
+                    created_at=now,
+                )
+                db.add(notif)
+            db.commit()
+        return {"message": "Message envoyé avec succès."}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.get("/rag_stats")

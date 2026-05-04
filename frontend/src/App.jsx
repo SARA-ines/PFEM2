@@ -9,6 +9,7 @@ import {
   fetchChatHistory,
   fetchClientTickets,
   fetchConversations,
+  fetchNotifications,
   fetchReportsSummary,
   getStoredAuthSession,
   login,
@@ -19,11 +20,14 @@ import {
   fetchTechnicianTickets,
   updateTicketPriority,
   technicianTakeover,
+  technicianSendMessage,
   replyToTicket,
 } from "./api";
 import ChatWindow from "./components/ChatWindow";
 import FonctionnalitesPicker from "./components/FonctionnalitesPicker";
+import NotificationBell from "./components/NotificationBell";
 import "./App.css";
+import "./improvements.css";
 
 const clientTabs = [
   { key: "tous", label: "Tous" },
@@ -975,6 +979,7 @@ function ClientView({ currentUser = defaultClientUser, onLogout }) {
   const [conversationHistory, setConversationHistory] = useState([]);
   const [serverConversations, setServerConversations] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const bottomRef = useRef(null);
   const [form, setForm] = useState({
     title: "",
@@ -991,6 +996,20 @@ function ClientView({ currentUser = defaultClientUser, onLogout }) {
   useEffect(() => {
     loadTickets();
     loadServerConversations();
+  }, []);
+
+  useEffect(() => {
+    async function pollNotifications() {
+      try {
+        const data = await fetchNotifications();
+        setNotifications(data.notifications || []);
+      } catch {
+        // Ignore silently — l'utilisateur n'est pas bloqué si le polling échoue
+      }
+    }
+    pollNotifications();
+    const interval = setInterval(pollNotifications, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -1627,6 +1646,22 @@ function ClientView({ currentUser = defaultClientUser, onLogout }) {
           <button type="button" className={`client-nav-link${(page === "history" || page === "chatbot") ? " active" : ""}`} onClick={() => setPage("history")}>Assistant IA</button>
         </nav>
         <div className="client-user">
+          <NotificationBell
+            notifications={notifications}
+            onNotificationClick={(ticketId) => {
+              if (page === "chatbot") archiveCurrentConversation();
+              setPage("tickets");
+              setSelectedClientTicketId(String(ticketId));
+            }}
+            onMarkAllRead={() =>
+              setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+            }
+            onNotificationRead={(id) =>
+              setNotifications((prev) =>
+                prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+              )
+            }
+          />
           <div className="client-avatar">{currentUser.initials}</div>
           <div>
             <strong>{currentUser.name}</strong>
@@ -2277,11 +2312,26 @@ function TechnicianView({ technician = defaultTechnicianUser, onLogout }) {
   const [takeoverOpen, setTakeoverOpen] = useState(false);
   const [takeoverText, setTakeoverText] = useState("");
   const [savingPriority, setSavingPriority] = useState(false);
+  const [techChatInput, setTechChatInput] = useState("");
+  const [techChatSending, setTechChatSending] = useState(false);
+  const techChatBottomRef = useRef(null);
 
   useEffect(() => {
     loadTech();
     loadReports();
   }, []);
+
+  // Réinitialise le champ de saisie quand on change de ticket
+  useEffect(() => {
+    setTechChatInput("");
+    setTakeoverOpen(false);
+    setTakeoverText("");
+  }, [selectedId]);
+
+  // Auto-scroll vers le bas de la conversation quand les messages changent
+  useEffect(() => {
+    techChatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [selectedId, tickets]);
 
   async function loadTech() {
     const data = await fetchTechnicianTickets();
@@ -2322,6 +2372,21 @@ function TechnicianView({ technician = defaultTechnicianUser, onLogout }) {
       await loadTech();
     } catch (e) {
       alert(e.message);
+    }
+  }
+
+  async function handleTechnicianMessage(ticketId) {
+    const message = techChatInput.trim();
+    if (!message || techChatSending) return;
+    setTechChatSending(true);
+    try {
+      await technicianSendMessage(parseNumericId(ticketId), message);
+      setTechChatInput("");
+      await loadTech();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setTechChatSending(false);
     }
   }
 
@@ -2371,7 +2436,6 @@ function TechnicianView({ technician = defaultTechnicianUser, onLogout }) {
               <aside className="queue-panel">
                 <div className="panel-head">
                   <div><p className="section-kicker">Queue</p><h2>Tickets a traiter</h2></div>
-                  <button type="button" className="primary-action">Affectation auto IA</button>
                 </div>
                 <div className="toolbar">
                   <input className="search-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher ticket, client, module..." />
@@ -2428,9 +2492,6 @@ function TechnicianView({ technician = defaultTechnicianUser, onLogout }) {
                               </button>
                             )}
                           </div>
-                          <span className={`status-tag ${selected.status}`}>
-                            {statusLabel(selected.status)}
-                          </span>
                         </div>
                       </div>
                       <div className="detail-meta-grid">
@@ -2443,7 +2504,62 @@ function TechnicianView({ technician = defaultTechnicianUser, onLogout }) {
                       </div>
                       <div className="summary-box"><strong>Resume incident</strong><p>{selected.summary}</p></div>
 
-                      {selected.conversation && selected.conversation.length > 0 && (
+                      {/* ── Chat conversation (toujours visible si ticket assigné) ── */}
+                      {selected.status === "en_cours" ? (
+                        <div className="tech-chat-panel">
+                          <div className="tech-chat-header">
+                            <strong>Discussion avec le client</strong>
+                            <span className="tech-chat-live-dot" />
+                          </div>
+                          <div className="tech-chat-messages">
+                            {selected.conversation && selected.conversation.length > 0 ? (
+                              selected.conversation.map((msg, idx) => (
+                                <div key={idx} className={`tech-chat-bubble ${msg.role}`}>
+                                  <div className="tech-chat-bubble-meta">
+                                    <span className="tech-chat-author">{msg.author}</span>
+                                  </div>
+                                  <p className="tech-chat-text">{msg.text}</p>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="tech-chat-empty">
+                                <p>Aucun message encore. Démarrez la discussion avec le client.</p>
+                              </div>
+                            )}
+                            <div ref={techChatBottomRef} />
+                          </div>
+                          <div className="tech-chat-input-area">
+                            <input
+                              type="text"
+                              className="tech-chat-input"
+                              value={techChatInput}
+                              onChange={(e) => setTechChatInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleTechnicianMessage(selected.id);
+                                }
+                              }}
+                              placeholder="Écrire un message au client..."
+                              disabled={techChatSending}
+                            />
+                            <button
+                              type="button"
+                              className="tech-chat-send-btn"
+                              onClick={() => handleTechnicianMessage(selected.id)}
+                              disabled={!techChatInput.trim() || techChatSending}
+                            >
+                              {techChatSending ? (
+                                <span>...</span>
+                              ) : (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      ) : selected.conversation && selected.conversation.length > 0 ? (
                         <div className="tech-conversation">
                           <div className="tech-conv-head">
                             <strong>Echanges client / technicien</strong>
@@ -2457,7 +2573,7 @@ function TechnicianView({ technician = defaultTechnicianUser, onLogout }) {
                             ))}
                           </div>
                         </div>
-                      )}
+                      ) : null}
 
                       {takeoverOpen && (
                         <div className="takeover-box">
@@ -2486,9 +2602,6 @@ function TechnicianView({ technician = defaultTechnicianUser, onLogout }) {
                             Prendre en charge
                           </button>
                         )}
-                        <button type="button" className="secondary-action" onClick={() => { setSelectedId(""); setTakeoverOpen(false); setTakeoverText(""); }}>
-                          Fermer
-                        </button>
                       </div>
                     </article>
                     <div className="detail-columns">

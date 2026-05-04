@@ -1,0 +1,484 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   AMÉLIORATIONS VISUEL - CHAT & TECHNICIEN
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ── Chatbot layout: maximise la hauteur disponible pour les messages ── */
+.chatbot-ticket-layout {
+  height: clamp(780px, calc(100vh - 100px), 1100px) !important;
+}
+
+/* Supprime le padding du panneau client quand il contient le chatbot */
+.chatbot-panel.client-panel {
+  padding: 0 !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+}
+
+/* Donne son propre padding compact à l'entête du chatbot */
+.chatbot-panel .create-ticket-head {
+  padding: 14px 20px 10px !important;
+  margin-bottom: 0 !important;
+  background: #fff;
+  border-bottom: 1px solid #edf2fb;
+  border-radius: 20px 20px 0 0;
+  flex-shrink: 0;
+}
+
+/* Cache la description longue pour gagner de la hauteur */
+.chatbot-panel .create-ticket-head p:not(.client-hero-label) {
+  display: none !important;
+}
+
+/* Bannière de contexte ticket plus compacte */
+.chatbot-panel .ticket-context-banner {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-top: none !important;
+  padding: 8px 20px !important;
+}
+
+/* Shell sans border-radius haut (le create-ticket-head le gère) */
+.chatbot-panel .chatbot-shell {
+  border-radius: 0 0 20px 20px !important;
+  border-top: none !important;
+}
+
+/* Amélioration du shell chat */
+.chatbot-shell {
+  border: 1px solid #e3edff !important;
+  box-shadow: 0 12px 32px rgba(35, 111, 255, 0.08) !important;
+}
+
+/* Amélioration header chat */
+.chatbot-header {
+  background: linear-gradient(135deg, #204779 0%, #2f67a8 100%) !important;
+  padding: 14px 20px !important;
+}
+
+/* Améliorations des bulles de message */
+.tech-conv-bubble {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  backdrop-filter: blur(4px);
+}
+
+.tech-conv-bubble.technicien {
+  background: linear-gradient(135deg, #dce8ff 0%, #e8f0ff 100%) !important;
+}
+
+.tech-conv-bubble.client {
+  background: linear-gradient(135deg, #1c6cff 0%, #0f4fd4 100%) !important;
+  box-shadow: 0 4px 12px rgba(28, 108, 255, 0.2) !important;
+}
+
+/* Amélioration du contexte ticket */
+.ticket-context-banner {
+  background: linear-gradient(135deg, #eef4ff 0%, #f5f9ff 100%) !important;
+  border: 1.5px solid #c5d8ff !important;
+}
+
+/* Améliorations du dashboard technicien */
+.tech-shell {
+  background: linear-gradient(135deg, #f0f4f8 0%, #edf2f8 100%);
+}
+
+.hero-panel {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(233, 242, 255, 0.86)) !important;
+  box-shadow: 0 24px 48px rgba(35, 111, 255, 0.12) !important;
+}
+
+.queue-item.selected {
+  border: 2px solid #7aa5ff !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f5f8ff 100%) !important;
+  box-shadow: 0 14px 32px rgba(67, 118, 215, 0.2) !important;
+}
+
+.queue-panel {
+  box-shadow: 0 24px 48px rgba(35, 111, 255, 0.08) !important;
+}
+
+.detail-card {
+  box-shadow: 0 24px 48px rgba(35, 111, 255, 0.08) !important;
+  border: 1px solid #e3edff;
+}
+
+/* Améliorations des boutons */
+.primary-action {
+  background: linear-gradient(135deg, #1c6cff 0%, #124fd3 100%) !important;
+  box-shadow: 0 12px 28px rgba(28, 108, 255, 0.24) !important;
+  transition: all 200ms cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.primary-action:hover:not(:disabled) {
+  box-shadow: 0 16px 40px rgba(28, 108, 255, 0.32) !important;
+  transform: translateY(-2px) !important;
+}
+
+.primary-action:active:not(:disabled) {
+  transform: translateY(0) !important;
+  box-shadow: 0 8px 16px rgba(28, 108, 255, 0.2) !important;
+}
+
+.secondary-action {
+  background: linear-gradient(135deg, #eaf0f8 0%, #e0e8f2 100%) !important;
+  border: 1px solid #d0dbe8 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+.secondary-action:hover:not(:disabled) {
+  background: linear-gradient(135deg, #dce8f8 0%, #d0dbe8 100%) !important;
+}
+
+/* Améliorations des tabs */
+.tab-chip {
+  background: linear-gradient(135deg, #eef2f8 0%, #e5ecf6 100%) !important;
+  border: 1px solid #dce8f0 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) !important;
+  transition: all 160ms ease !important;
+}
+
+.tab-chip.active {
+  background: linear-gradient(135deg, #153b72 0%, #235ba8 100%) !important;
+  box-shadow: 0 8px 20px rgba(28, 108, 255, 0.18) !important;
+}
+
+/* Amélioration des inputs */
+.search-input {
+  background: #f5f7fb !important;
+  border: 1.5px solid #d9e2ef !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02) !important;
+}
+
+.search-input:focus {
+  border-color: #1c6cff !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 4px rgba(28, 108, 255, 0.12) !important;
+}
+
+/* Amélioration textarea takeover */
+.takeover-box {
+  background: linear-gradient(135deg, #f0f6ff 0%, #e8f0fe 100%) !important;
+  border: 1.5px solid #c5d8ff !important;
+}
+
+.takeover-textarea {
+  border: 1.5px solid #c5d8ff !important;
+  background: #fff !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+}
+
+.takeover-textarea:focus {
+  border-color: #1c6cff !important;
+  box-shadow: 0 0 0 4px rgba(28, 108, 255, 0.12) !important;
+}
+
+/* Amélioration des cards d'info */
+.info-chip {
+  background: linear-gradient(135deg, #f4f7fb 0%, #eff4fb 100%) !important;
+  border: 1px solid #e3ecf5 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03) !important;
+}
+
+.summary-box,
+.similar-box {
+  background: linear-gradient(135deg, #f9fbff 0%, #eff5fe 100%) !important;
+  border: 1.5px solid #e0eaff !important;
+}
+
+/* Amélioration des status tags et badges */
+.badge.critique {
+  background: linear-gradient(135deg, #ffe0db 0%, #ffd4cc 100%) !important;
+  box-shadow: 0 2px 6px rgba(207, 68, 37, 0.12) !important;
+}
+
+.badge.haute {
+  background: linear-gradient(135deg, #fff1d9 0%, #ffecc4 100%) !important;
+  box-shadow: 0 2px 6px rgba(209, 111, 8, 0.12) !important;
+}
+
+.badge.moyenne {
+  background: linear-gradient(135deg, #dfe9ff 0%, #d0e1ff 100%) !important;
+  box-shadow: 0 2px 6px rgba(40, 93, 202, 0.12) !important;
+}
+
+.badge.normale {
+  background: linear-gradient(135deg, #dff7e6 0%, #d0f1dd 100%) !important;
+  box-shadow: 0 2px 6px rgba(28, 135, 80, 0.12) !important;
+}
+
+/* Amélioration boîte de conversation */
+.tech-conversation {
+  border: 1.5px solid #c5d8ff !important;
+  background: #f6f9ff !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02) !important;
+}
+
+.tech-conv-head {
+  background: linear-gradient(135deg, #e8f0ff 0%, #dfe8ff 100%) !important;
+}
+
+/* Amélioration scrollbar dans les panneaux */
+.queue-list::-webkit-scrollbar,
+.detail-stack::-webkit-scrollbar,
+.tech-conv-messages::-webkit-scrollbar {
+  width: 8px;
+}
+
+.queue-list::-webkit-scrollbar-track,
+.detail-stack::-webkit-scrollbar-track,
+.tech-conv-messages::-webkit-scrollbar-track {
+  background: #f0f4f8;
+  border-radius: 4px;
+}
+
+.queue-list::-webkit-scrollbar-thumb,
+.detail-stack::-webkit-scrollbar-thumb,
+.tech-conv-messages::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #a5c7ff 0%, #8ab5ff 100%);
+  border-radius: 4px;
+}
+
+.queue-list::-webkit-scrollbar-thumb:hover,
+.detail-stack::-webkit-scrollbar-thumb:hover,
+.tech-conv-messages::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #8ab5ff 0%, #6fa3ff 100%);
+}
+
+/* Responsive améliorations */
+@media (max-width: 1180px) {
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .chatbot-header {
+    padding: 12px 14px !important;
+  }
+
+  .detail-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .queue-list {
+    max-height: 400px;
+  }
+
+  .primary-action,
+  .secondary-action {
+    padding: 12px 16px !important;
+    font-size: 0.95rem !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHAT TECHNICIEN ↔ CLIENT — Style messagerie moderne
+   ═════════════════════════════════════════════════════════════════════════ */
+
+.tech-chat-panel {
+  display: flex;
+  flex-direction: column;
+  border: 1.5px solid #dce8ff;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-top: 18px;
+  background: #fff;
+  box-shadow: 0 4px 20px rgba(35, 111, 255, 0.07);
+}
+
+/* En-tête du chat technicien */
+.tech-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #204779 0%, #2f67a8 100%);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.tech-chat-header strong {
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+/* Point vert "en ligne" */
+.tech-chat-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.3);
+  animation: livePulse 2s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.3); }
+  50%       { box-shadow: 0 0 0 5px rgba(74, 222, 128, 0.1); }
+}
+
+/* Zone de messages scrollable */
+.tech-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 320px;
+  background: #f8faff;
+  scrollbar-width: thin;
+  scrollbar-color: #d1ddf5 transparent;
+}
+
+.tech-chat-messages::-webkit-scrollbar { width: 5px; }
+.tech-chat-messages::-webkit-scrollbar-thumb {
+  background: #d1ddf5;
+  border-radius: 4px;
+}
+
+/* État vide */
+.tech-chat-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80px;
+}
+
+.tech-chat-empty p {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  text-align: center;
+}
+
+/* Bulles de messages */
+.tech-chat-bubble {
+  display: flex;
+  flex-direction: column;
+  max-width: 78%;
+}
+
+.tech-chat-bubble.technicien {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.tech-chat-bubble.client {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.tech-chat-bubble-meta {
+  margin-bottom: 3px;
+}
+
+.tech-chat-author {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tech-chat-text {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tech-chat-bubble.technicien .tech-chat-text {
+  background: linear-gradient(135deg, #2563eb 0%, #1c4fca 100%);
+  color: #fff;
+  border-radius: 14px 14px 4px 14px;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.22);
+}
+
+.tech-chat-bubble.client .tech-chat-text {
+  background: #fff;
+  color: #17355a;
+  border-radius: 4px 14px 14px 14px;
+  border: 1px solid #e2eaf6;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Zone de saisie */
+.tech-chat-input-area {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid #e8eef6;
+  background: #fff;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.tech-chat-input {
+  flex: 1;
+  border: 1.5px solid #d3dff0;
+  border-radius: 24px;
+  padding: 10px 16px;
+  font-size: 0.88rem;
+  color: #17355a;
+  background: #f7f9fd;
+  outline: none;
+  transition: border-color 160ms, box-shadow 160ms;
+}
+
+.tech-chat-input:focus {
+  border-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.tech-chat-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tech-chat-send-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #2563eb 0%, #1c4fca 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 160ms, box-shadow 160ms, opacity 160ms;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.tech-chat-send-btn:hover:not(:disabled) {
+  transform: scale(1.08);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+.tech-chat-send-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
