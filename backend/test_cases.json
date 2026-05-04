@@ -1,0 +1,256 @@
+[
+  {
+    "id": "P01",
+    "categorie": "paie",
+    "description": "Erreur calcul IRG sur bulletin",
+    "query": "Le calcul de l'IRG est incorrect sur le bulletin de paie du mois de mars, le montant affiche ne correspond pas",
+    "ticket_context": { "module": "paie", "software": "BIGPaie", "version": "837", "priority": "Critique", "title": "Erreur calcul IRG", "description": "IRG incorrect sur bulletin mars" },
+    "expected_module": "paie",
+    "expected_response_types": ["solution", "escalade_consultant", "version_check"],
+    "should_not_escalade": false
+  },
+  {
+    "id": "P02",
+    "categorie": "paie",
+    "description": "Bulletin de paie ne s'imprime pas",
+    "query": "L'impression du bulletin de paie est impossible, l'etat reste vide apres generation",
+    "ticket_context": { "module": "paie", "software": "BIGPaie", "version": "846", "priority": "Haute", "title": "Impression bulletin impossible", "description": "Etat impression vide" },
+    "expected_module": "paie",
+    "expected_response_types": ["solution", "escalade_consultant"],
+    "should_not_escalade": false
+  },
+  {
+    "id": "P03",
+    "categorie": "paie",
+    "description": "Version paie ancienne - doit recommander MAJ",
+    "query": "Anomalie sur le calcul des cotisations sociales CNAS dans BIGPaie",
+    "ticket_context": { "module": "paie", "software": "BIGPaie", "version": "837", "priority": "Moyen", "title": "Erreur cotisations CNAS", "description": "Cotisations CNAS incorrectes" },
+    "expected_module": "paie",
+    "expected_response_types": ["version_check", "solution", "escalade_consultant"],
+    "client_version": "837",
+    "latest_version": "846"
+  },
+  {
+    "id": "P04",
+    "categorie": "paie",
+    "description": "Version paie a jour - doit assigner technicien",
+    "query": "Le rappel de salaire ne se calcule pas correctement sur BIGPaie",
+    "ticket_context": { "module": "paie", "software": "BIGPaie", "version": "846", "priority": "Moyen", "title": "Erreur rappel salaire", "description": "Rappel salaire incorrect" },
+    "expected_module": "paie",
+    "expected_response_types": ["solution", "escalade_consultant", "version_check"],
+    "client_version": "846",
+    "latest_version": "846"
+  },
+  {
+    "id": "S01",
+    "categorie": "stock",
+    "description": "Stock negatif apres mouvement",
+    "query": "Un mouvement de stock en sortie a genere un stock negatif sur l article A100, le CUMP est fausse",
+    "ticket_context": { "module": "stock", "software": "BIGGestion", "version": "1029", "priority": "Critique", "title": "Stock negatif article A100", "description": "Stock negatif apres sortie, CUMP fausse" },
+    "expected_module": "stock",
+    "expected_response_types": ["solution", "escalade_consultant"],
+    "should_not_escalade": false
+  },
+  {
+    "id": "S02",
+    "categorie": "stock",
+    "description": "Inventaire ne correspond pas aux mouvements",
+    "query": "L inventaire physique ne correspond pas aux quantites dans BigGestion, ecart constate sur plusieurs articles",
+    "ticket_context": { "module": "stock", "software": "BIGGestion", "version": "1029", "priority": "Haute", "title": "Ecart inventaire", "description": "Inventaire physique different de la base" },
+    "expected_module": "stock",
+    "expected_response_types": ["solution", "escalade_consultant"],
+    "should_not_escalade": false
+  },
+  {
+    "id": "S03",
+    "categorie": "stock",
+    "description": "Probleme de transfert inter-magasins",
+    "query": "Le transfert de marchandise entre magasins ne met pas a jour les quantites dans le magasin destination",
+    "ticket_context": { "module": "stock", "software": "BIGGestion", "version": "1028", "priority": "Moyen", "title": "Transfert magasin incomplet", "description": "Quantite destination non mise a jour" },
+    "expected_module": "stock",
+    "expected_response_types": ["solution", "escalade_consultant", "version_check"],
+    "should_not_escalade": false
+  },
+  {
+    "id": "C01",
+    "categorie": "comptabilite",
+    "description": "Ecriture comptable bloquee",
+    "query": "Impossible de valider une ecriture comptable sur le journal des achats, message d erreur schema de validation",
+    "ticket_context": { "module": "comptabilite", "software": "BIGFinances", "version": "849", "priority": "Critique", "title": "Validation ecriture bloquee", "description": "Erreur validation ecriture journal achats" },
+    "expected_module": "comptabilite",
+    "expected_response_types": ["solution", "escalade_consultant"],
+    "should_not_escalade": false
+  },
+  {
+    "id": "C02",
+    "categorie": "comptabilite",
+    "description": "Grand livre incorrect",
+    "query": "Le grand livre des fournisseurs affiche des soldes incorrects, les ecritures de cloture ne sont pas prises en compte",
+    "ticket_context": { "module": "comptabilite", "software": "BIGFinances", "version": "852", "priority": "Haute", "title": "Soldes grand livre incorrects", "description": "Cloture non prise en compte dans grand livre" },
+    "expected_module": "comptabilite",
+    "expected_response_types": ["solution", "escalade_consultant", "version_check"],
+    "should_not_escalade": false
+  },
+  {
+    "id": "RH01",
+    "categorie": "rh",
+    "description": "Conge annuel non deduit",
+    "query": "La demande de conge annuel a ete approuvee mais le solde n est pas deduit dans le dossier employe BIGGRH",
+    "ticket_context": { "module": "rh", "software": "BIGGRH", "version": "1028", "priority": "Moyen", "title": "Conge non deduit", "description": "Solde conge non mis a jour apres approbation" },
+    "expected_module": "rh",
+    "expected_response_types": ["solution", "escalade_consultant"],
+    "should_not_escalade": false
+  },
+  {
+    "id": "RH02",
+    "categorie": "rh",
+    "description": "Fiche employe ne s'ouvre pas",
+    "query": "La fiche employe est inaccessible dans BIGGRH, message acces refuse meme avec les droits administrateur",
+    "ticket_context": { "module": "rh", "software": "BIGGRH", "version": "1028", "priority": "Haute", "title": "Fiche employe inaccessible", "description": "Acces refuse fiche employe" },
+    "expected_module": "rh",
+    "expected_response_types": ["solution", "escalade_consultant"],
+    "should_not_escalade": false
+  },
+  {
+    "id": "F01",
+    "categorie": "facturation",
+    "description": "Facture client ne s'imprime pas",
+    "query": "L etat d impression de la facture client est vide, aucune ligne n apparait meme apres regeneration crystal report",
+    "ticket_context": { "module": "facturation", "software": "BIGSoft 8i", "version": "839", "priority": "Haute", "title": "Impression facture vide", "description": "Etat facture crystal report vide" },
+    "expected_module": "facturation",
+    "expected_response_types": ["solution", "escalade_consultant"],
+    "should_not_escalade": false
+  },
+  {
+    "id": "F02",
+    "categorie": "facturation",
+    "description": "Montant TTC incorrect sur facture",
+    "query": "Le montant TTC calcule sur la facture de vente ne correspond pas au total HT plus TVA, ecart de 500 DA",
+    "ticket_context": { "module": "facturation", "software": "BIGSoft 8i", "version": "843", "priority": "Critique", "title": "Erreur calcul TTC", "description": "TTC incorrect, ecart 500 DA" },
+    "expected_module": "facturation",
+    "expected_response_types": ["solution", "escalade_consultant"],
+    "should_not_escalade": false
+  },
+  {
+    "id": "ESC01",
+    "categorie": "escalade_consultant",
+    "description": "Migration de donnees - doit escalader vers consultant",
+    "query": "Nous avons besoin d effectuer une migration complete des donnees de l ancienne base vers le nouveau serveur BigGestion",
+    "ticket_context": { "module": "stock", "software": "BIGGestion", "version": "1029", "priority": "Critique", "title": "Migration base de donnees", "description": "Migration complete vers nouveau serveur" },
+    "expected_module": "stock",
+    "expected_response_types": ["escalade_consultant"],
+    "expected_escalade": true
+  },
+  {
+    "id": "ESC02",
+    "categorie": "escalade_consultant",
+    "description": "Configuration GPAO complexe",
+    "query": "Nous avons besoin d une assistance pour la configuration complete du module GPAO et la formation des utilisateurs",
+    "ticket_context": { "module": "gpao", "software": "BIGGestion", "version": "1029", "priority": "Haute", "title": "Configuration GPAO", "description": "Assistance configuration et formation" },
+    "expected_module": "gpao",
+    "expected_response_types": ["escalade_consultant"],
+    "expected_escalade": true
+  },
+  {
+    "id": "VER01",
+    "categorie": "version_check",
+    "description": "Version inconnue - doit demander la version",
+    "query": "J ai un probleme avec l affichage des etats dans BIGPaie",
+    "ticket_context": { "module": "paie", "software": "BIGPaie", "version": "", "priority": "Moyen", "title": "Probleme affichage etats", "description": "Etats ne s affichent pas correctement" },
+    "expected_module": "paie",
+    "expected_response_types": ["version_check", "solution", "qualification"],
+    "expected_version_ask": true
+  },
+  {
+    "id": "VER02",
+    "categorie": "version_check",
+    "description": "Version obsolete BIGFinances - doit recommander MAJ",
+    "query": "Probleme de cloture annuelle sur BIGFinances, les ecritures de report ne sont pas generees",
+    "ticket_context": { "module": "comptabilite", "software": "BIGFinances", "version": "847", "priority": "Critique", "title": "Cloture annuelle bloquee", "description": "Ecritures de report non generees" },
+    "expected_module": "comptabilite",
+    "expected_response_types": ["version_check", "solution"],
+    "expected_version_check": true,
+    "client_version": "847",
+    "latest_version": "853"
+  },
+  {
+    "id": "VAG01",
+    "categorie": "vague",
+    "description": "Question trop vague - doit demander des precisions",
+    "query": "ca marche pas",
+    "ticket_context": {},
+    "expected_module": "",
+    "expected_response_types": ["qualification"],
+    "expected_escalade": false
+  },
+  {
+    "id": "VAG02",
+    "categorie": "vague",
+    "description": "Question vague avec module connu",
+    "query": "probleme sur la paie",
+    "ticket_context": { "module": "paie", "software": "BIGPaie", "version": "839", "priority": "Moyen", "title": "Probleme paie", "description": "Probleme paie" },
+    "expected_module": "paie",
+    "expected_response_types": ["qualification", "solution", "escalade_consultant"],
+    "expected_escalade": true
+  },
+  {
+    "id": "HOR01",
+    "categorie": "hors_domaine",
+    "description": "Question hors ERP - doit etre rejetee",
+    "query": "Comment installer Windows 11 sur mon ordinateur",
+    "ticket_context": {},
+    "expected_module": "",
+    "expected_response_types": ["qualification"],
+    "expected_no_similar_tickets": true
+  },
+  {
+    "id": "HOR02",
+    "categorie": "hors_domaine",
+    "description": "Question reseau generale - hors perimetre",
+    "query": "Ma connexion internet est lente, comment ameliorer la vitesse",
+    "ticket_context": {},
+    "expected_module": "",
+    "expected_response_types": ["qualification"],
+    "expected_no_similar_tickets": true
+  },
+  {
+    "id": "SAL01",
+    "categorie": "salutation",
+    "description": "Salutation pure - doit repondre poliment",
+    "query": "Bonjour",
+    "ticket_context": {},
+    "expected_module": "",
+    "expected_response_types": ["qualification"],
+    "expected_escalade": false
+  },
+  {
+    "id": "DB01",
+    "categorie": "base_donnees",
+    "description": "Erreur connexion SQL Server",
+    "query": "Impossible de se connecter au serveur SQL, message d erreur connexion refused port 1433 BigFinances",
+    "ticket_context": { "module": "comptabilite", "software": "BIGFinances", "version": "853", "priority": "Critique", "title": "Connexion SQL impossible", "description": "Erreur connexion port 1433" },
+    "expected_module": "comptabilite",
+    "expected_response_types": ["solution", "escalade_consultant"],
+    "should_not_escalade": false
+  },
+  {
+    "id": "PERF01",
+    "categorie": "performance",
+    "description": "Lenteur extreme application",
+    "query": "L application BigGestion est extremement lente depuis ce matin, tous les modules sont bloques, impossible de travailler",
+    "ticket_context": { "module": "stock", "software": "BIGGestion", "version": "1029", "priority": "Critique", "title": "Lenteur extreme BigGestion", "description": "Application bloquee depuis ce matin" },
+    "expected_module": "stock",
+    "expected_response_types": ["solution", "escalade_consultant"],
+    "should_not_escalade": false
+  },
+  {
+    "id": "ACC01",
+    "categorie": "acces",
+    "description": "Code activation expire",
+    "query": "Le code d activation de BIGPaie a expire, impossible de lancer l application, message licence invalide",
+    "ticket_context": { "module": "paie", "software": "BIGPaie", "version": "846", "priority": "Critique", "title": "Licence expiree", "description": "Code activation expire, application bloquee" },
+    "expected_module": "paie",
+    "expected_response_types": ["solution", "escalade_consultant"],
+    "should_not_escalade": false
+  }
+]

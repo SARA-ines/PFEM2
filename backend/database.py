@@ -63,6 +63,21 @@ class Ticket(Base):
     assistant_session_id = Column(String, nullable=True)
 
 
+class TicketKnowledge(Base):
+    __tablename__ = "ticket_knowledge"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ticket_id = Column(Integer, unique=True, nullable=True)
+    objet = Column(Text, nullable=True)
+    problem_text = Column(Text, nullable=True)
+    conversation_text = Column(Text, nullable=True)
+    final_solution = Column(Text, nullable=True)
+    logiciel_id = Column(String, nullable=True)
+    version_id = Column(String, nullable=True)
+    module = Column(String, nullable=True)
+    full_text = Column(Text, nullable=True)
+
+
 class User(Base):
     __tablename__ = "users"
 

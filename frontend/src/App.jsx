@@ -22,6 +22,7 @@ import {
   replyToTicket,
 } from "./api";
 import ChatWindow from "./components/ChatWindow";
+import FonctionnalitesPicker from "./components/FonctionnalitesPicker";
 import "./App.css";
 
 const clientTabs = [
@@ -70,7 +71,7 @@ const emptyReports = {
 const initialAssistantMessage = {
   role: "assistant",
   content:
-    "Bonjour. Remplissez le formulaire et cliquez sur \"Qualifier avec l'assistant\" pour demarrer. Je connaitrai deja votre logiciel, module et version — vous n'aurez pas a les resaisir.",
+    "Bonjour. Remplissez le formulaire et cliquez sur \"Qualifier avec l'assistant\" pour demarrer. Je connaitrai deja votre logiciel, module et version - vous n'aurez pas a les resaisir.",
 };
 
 const MIN_USEFUL_SIMILARITY = 0.25;
@@ -164,6 +165,7 @@ function buildAssistantPromptFromForm(form) {
     form?.module?.trim() ? `Module: ${form.module.trim()}` : "",
     form?.softwareName?.trim() ? `Logiciel: ${form.softwareName.trim()}` : "",
     form?.softwareVersion?.trim() ? `Version: ${form.softwareVersion.trim()}` : "",
+    form?.fonctionnalites?.trim() ? `Fonctionnalites utilisees: ${form.fonctionnalites.trim()}` : "",
     form?.description?.trim() ? `Description: ${form.description.trim()}` : "",
   ].filter(Boolean);
 
@@ -421,16 +423,7 @@ function LoginView({ onSuccess, onOpenClientRegistration, onOpenTechnicianRegist
   }, [initialRole, initialEmail]);
 
   function setField(name, value) {
-    setForm((prev) => {
-      const next = { ...prev, [name]: value };
-      const currentDraft = buildDraftFromForm(prev);
-      const nextDraft = buildDraftFromForm(next);
-      if (currentDraft !== nextDraft) {
-        setLastAssistantState({});
-        setSimilarTickets([]);
-      }
-      return next;
-    });
+    setForm((prev) => ({ ...prev, [name]: value }));
   }
 
   const registrationLabel =
@@ -959,6 +952,9 @@ function RegistrationTechnicianView({ onSuccess, onOpenLogin }) {
   );
 }
 
+const tdLabel = { padding: "5px 8px 5px 0", color: "#5a769b", fontWeight: 700, whiteSpace: "nowrap", verticalAlign: "top", width: "42%", fontSize: 12 };
+const tdValue = { padding: "5px 0", color: "#17355a", verticalAlign: "top", fontWeight: 600 };
+
 function ClientView({ currentUser = defaultClientUser, onLogout }) {
   const storageKey = clientChatStorageKey(currentUser.clientId);
   const [page, setPage] = useState("tickets");
@@ -986,9 +982,9 @@ function ClientView({ currentUser = defaultClientUser, onLogout }) {
     softwareName: "",
     softwareVersion: "",
     description: "",
+    fonctionnalites: "",
     priority: "moyenne",
     phone: currentUser.phone || "",
-    fileName: "",
   });
   const formValidation = validateTicketForm(form);
 
@@ -1042,9 +1038,9 @@ function ClientView({ currentUser = defaultClientUser, onLogout }) {
                     softwareName: ticket.logiciel || "",
                     softwareVersion: ticket.version || "",
                     description: ticket.details || "",
+                    fonctionnalites: "",
                     priority: ticket.priority || "normale",
                     phone: "",
-                    fileName: "",
                   }
                 : {};
               return {
@@ -1118,6 +1114,7 @@ function ClientView({ currentUser = defaultClientUser, onLogout }) {
             description: local.form?.description || "",
             softwareName: local.form?.softwareName || "",
             softwareVersion: local.form?.softwareVersion || "",
+            fonctionnalites: local.form?.fonctionnalites || "",
             priority: local.form?.priority || "moyenne",
           } : null,
           updated_at: local.updatedAt,
@@ -1155,9 +1152,9 @@ function ClientView({ currentUser = defaultClientUser, onLogout }) {
             softwareName: conv.ticket.softwareName || "",
             softwareVersion: conv.ticket.softwareVersion || "",
             description: conv.ticket.description || "",
+            fonctionnalites: conv.ticket.fonctionnalites || "",
             priority: conv.ticket.priority || "moyenne",
             phone: currentUser.phone || "",
-            fileName: "",
           }
         : {},
       currentTicketId: conv.ticket?.id || null,
@@ -1370,6 +1367,7 @@ function ClientView({ currentUser = defaultClientUser, onLogout }) {
       version: form.softwareVersion || "",
       priority: form.priority || "",
       description: form.description || "",
+      fonctionnalites: form.fonctionnalites || "",
     } : {};
 
     const userMessage = { role: "user", content };
@@ -1444,9 +1442,9 @@ function ClientView({ currentUser = defaultClientUser, onLogout }) {
         software_name: form.softwareName,
         software_version: form.softwareVersion,
         description: form.description,
+        fonctionnalites: form.fonctionnalites,
         priority: form.priority,
         phone: form.phone,
-        file_name: form.fileName,
         requester_name: currentUser.name,
         client_name: currentUser.clientName,
         client_id: currentUser.clientId,
@@ -1460,18 +1458,18 @@ function ClientView({ currentUser = defaultClientUser, onLogout }) {
       const submittedModule = form.module;
       const submittedSoftwareName = form.softwareName;
       const submittedSoftwareVersion = form.softwareVersion;
+      const submittedFonctionnalites = form.fonctionnalites;
       const submittedPriority = form.priority;
       const submittedPhone = form.phone;
-      const submittedFileName = form.fileName;
       setForm({
         title: "",
         module: "",
         softwareName: "",
         softwareVersion: "",
         description: "",
+        fonctionnalites: "",
         priority: "moyenne",
         phone: currentUser.phone || "",
-        fileName: "",
       });
       const createdTicketUserMessage = {
         role: "user",
@@ -1514,9 +1512,9 @@ function ClientView({ currentUser = defaultClientUser, onLogout }) {
         softwareName: submittedSoftwareName,
         softwareVersion: submittedSoftwareVersion,
         description: submittedDescription,
+        fonctionnalites: submittedFonctionnalites,
         priority: submittedPriority,
         phone: submittedPhone,
-        fileName: submittedFileName,
       }));
       setPage("chatbot");
     } catch (error) {
@@ -1992,6 +1990,16 @@ function ClientView({ currentUser = defaultClientUser, onLogout }) {
               >
                 <textarea value={form.description} onChange={(e) => setField("description", e.target.value)} rows={8} placeholder="Decrivez le probleme rencontre, le message d'erreur, le module concerne et ce que vous avez deja essaye." />
               </Field>
+              <Field
+                label="Fonctionnalites concernees"
+                help="Selectionnez les fonctionnalites liees a votre probleme (filtre selon le module choisi)"
+              >
+                <FonctionnalitesPicker
+                  module={form.module}
+                  value={form.fonctionnalites}
+                  onChange={(val) => setField("fonctionnalites", val)}
+                />
+              </Field>
               <div className="create-ticket-grid">
                 <Field label="Priorite">
                   <select className="field-select" value={form.priority} onChange={(e) => setField("priority", e.target.value)}>
@@ -2007,15 +2015,6 @@ function ClientView({ currentUser = defaultClientUser, onLogout }) {
                   <input value={form.phone} onChange={(e) => setField("phone", e.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" maxLength={10} placeholder="Ex : 0550000000" />
                 </Field>
               </div>
-              <Field label="Piece jointe">
-                <label className="upload-box rich">
-                  <input type="file" hidden onChange={(e) => setField("fileName", e.target.files?.[0]?.name || "")} />
-                  <div className="upload-copy">
-                    <strong>{form.fileName || "Ajouter une capture, un rapport ou un document"}</strong>
-                    <small>PNG, JPG, PDF, DOCX - 10 Mo max</small>
-                  </div>
-                </label>
-              </Field>
               {message ? <p className="field-help">{message}</p> : null}
               <div className="action-row create-actions">
                 <button type="button" className="secondary-action" onClick={() => setPage("tickets")}>Annuler</button>
@@ -2098,8 +2097,7 @@ function ClientView({ currentUser = defaultClientUser, onLogout }) {
                   <p>Conversation en cours avec l'agent IA. Le resume du ticket est visible a droite.</p>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button type="button" className="secondary-action" onClick={() => setPage("history")}>Historique</button>
-                  <button type="button" className="secondary-action" onClick={() => { archiveCurrentConversation(); setPage("tickets"); }}>Retour aux tickets</button>
+                  <button type="button" className="secondary-action" onClick={() => setPage("history")}>Ancienne conversation</button>
                 </div>
               </div>
 
@@ -2127,16 +2125,14 @@ function ClientView({ currentUser = defaultClientUser, onLogout }) {
                     <strong>Assistant Support BIG</strong>
                     <span>
                       {chatLoading
-                        ? "Analyse en cours..."
+                        ? "En train de répondre..."
                         : lastAssistantState?.statut === "solution_proposee"
-                        ? "Solution proposee"
+                        ? "✓ Solution proposée"
                         : lastAssistantState?.statut === "escalade_technique"
-                        ? "Escalade vers un technicien"
+                        ? "Transfert vers un technicien"
                         : lastAssistantState?.statut === "resolu"
-                        ? "Ticket resolu"
-                        : lastAssistantState?.module
-                        ? `Module ${lastAssistantState.module} — Qualification`
-                        : "Qualification automatique en cours"}
+                        ? "✓ Résolu"
+                        : "En ligne"}
                     </span>
                   </div>
                 </div>
@@ -2148,134 +2144,115 @@ function ClientView({ currentUser = defaultClientUser, onLogout }) {
                   similarTickets={similarTickets}
                 />
 
-                {chatLocked ? (
-                  <div className="chatbot-input-row">
-                    <textarea
-                      value={solutionProposed ? "Une solution a ete proposee. Tu peux modifier le formulaire ou terminer." : "Le ticket est pret pour l'affectation."}
-                      readOnly
-                      rows={3}
-                      disabled
-                    />
-                    {readyToAssign ? (
-                      <button
-                        type="button"
-                        className="primary-action"
-                        disabled={!currentTicketId}
-                        onClick={assignTicketToTechnician}
-                      >
-                        {sending ? "Assignation..." : "Assigner a un technicien"}
-                      </button>
-                    ) : (
-                      <button type="button" className="primary-action" onClick={() => { archiveCurrentConversation(); setPage("tickets"); }}>
-                        Terminer
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="chatbot-input-row">
-                    <textarea
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      placeholder="Decris ton probleme ici..."
-                      rows={3}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          submitChatMessage();
-                        }
-                      }}
-                    />
+                {readyToAssign && (
+                  <div style={{ padding: "8px 16px", background: "#f0fdf4", borderTop: "1px solid #bbf7d0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                    <span style={{ fontSize: 13, color: "#15803d" }}>✓ Votre ticket est prêt à être assigné à un technicien.</span>
                     <button
                       type="button"
                       className="primary-action"
-                      onClick={() => submitChatMessage()}
+                      style={{ flexShrink: 0 }}
+                      disabled={!currentTicketId || sending}
+                      onClick={assignTicketToTechnician}
                     >
-                      {sending ? "Envoi..." : "Envoyer"}
+                      {sending ? "Assignation..." : "Assigner"}
                     </button>
                   </div>
                 )}
+                <div className="chatbot-input-row">
+                  <textarea
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Répondez ici..."
+                    rows={3}
+                    disabled={chatLoading || lastAssistantState.statut === "attribue"}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        submitChatMessage();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="primary-action"
+                    disabled={chatLoading || !chatInput.trim() || lastAssistantState.statut === "attribue"}
+                    onClick={() => submitChatMessage()}
+                  >
+                    {chatLoading ? "..." : "Envoyer"}
+                  </button>
+                </div>
               </div>
             </article>
 
             <aside className="client-panel create-help-panel chatbot-side-panel">
-              <p className="client-hero-label">Historique</p>
-              <h3>Anciennes conversations</h3>
-              {getAllHistoryConversations().length ? (
-                <div className="assistant-history-list">
-                  {getAllHistoryConversations().slice(0, 5).map((conv) => (
-                    <button
-                      key={conv.id}
-                      type="button"
-                      className="assistant-history-item"
-                      onClick={() => handleOpenConversationFromHistory(conv)}
-                    >
-                      <strong>{conv.title || "Conversation precedente"}</strong>
-                      {(conv.ticket?.module || conv.ticket?.softwareName || conv._snapshot?.form?.module || conv._snapshot?.form?.softwareName) ? (
-                        <span className="history-meta">
-                          {[
-                            conv.ticket?.module || conv._snapshot?.form?.module,
-                            conv.ticket?.softwareName || conv._snapshot?.form?.softwareName,
-                            conv.ticket?.softwareVersion || conv._snapshot?.form?.softwareVersion,
-                          ].filter(Boolean).join(" · ")}
-                        </span>
-                      ) : null}
-                      <span>{conv.preview || ""}</span>
-                      <small>{formatConversationDate(conv.updated_at || conv.updatedAt)}</small>
-                    </button>
-                  ))}
-                  <button type="button" className="secondary-action" style={{ marginTop: 8, width: "100%" }} onClick={() => setPage("history")}>
-                    Voir tout l'historique
-                  </button>
-                </div>
-              ) : (
+              <p className="client-hero-label">Résumé du ticket</p>
+              <h3>{form.title || "Ticket en cours"}</h3>
+
+              <div className="similar-box">
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <tbody>
+                    {currentTicketId && (
+                      <tr>
+                        <td style={tdLabel}>Numéro</td>
+                        <td style={tdValue}>#{currentTicketId}</td>
+                      </tr>
+                    )}
+                    {form.module && (
+                      <tr>
+                        <td style={tdLabel}>Module</td>
+                        <td style={tdValue}>{form.module}</td>
+                      </tr>
+                    )}
+                    {form.softwareName && (
+                      <tr>
+                        <td style={tdLabel}>Logiciel</td>
+                        <td style={tdValue}>{form.softwareName}</td>
+                      </tr>
+                    )}
+                    {form.softwareVersion && (
+                      <tr>
+                        <td style={tdLabel}>Version</td>
+                        <td style={tdValue}>{form.softwareVersion}</td>
+                      </tr>
+                    )}
+                    {form.priority && (
+                      <tr>
+                        <td style={tdLabel}>Priorité</td>
+                        <td style={tdValue}>{priorityLabel(form.priority)}</td>
+                      </tr>
+                    )}
+                    {(lastAssistantState.type_incident) && (
+                      <tr>
+                        <td style={tdLabel}>Type</td>
+                        <td style={tdValue}>{lastAssistantState.type_incident}</td>
+                      </tr>
+                    )}
+                    {form.fonctionnalites && (
+                      <tr>
+                        <td style={tdLabel}>Fonctionnalités</td>
+                        <td style={tdValue}>{form.fonctionnalites}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {form.description && (
                 <div className="similar-box">
-                  <strong>Aucune ancienne conversation</strong>
-                  <p>Apres tes prochains echanges avec l'assistant, tu pourras les rouvrir ici.</p>
+                  <strong style={{ fontSize: 12, color: "#6b7280", display: "block", marginBottom: 4 }}>Description</strong>
+                  <p style={{ fontSize: 13, margin: 0 }}>{form.description.slice(0, 220)}{form.description.length > 220 ? "…" : ""}</p>
                 </div>
               )}
 
-              <p className="client-hero-label">Qualification</p>
-              <h3>Resume du ticket envoye</h3>
-              <div className="similar-box">
-                <strong>{form.title || "Ticket cree"}</strong>
-                <p>{form.description || "Aucune description."}</p>
-              </div>
-              {lastAssistantState.module || lastAssistantState.type_incident ? (
-                <div className="similar-box">
-                  <strong>Qualification detectee</strong>
-                  <p>Type : {lastAssistantState.type_incident || "non detecte"}</p>
-                  <p>Statut : {lastAssistantState.statut || "en attente"}</p>
+              {lastAssistantState.solution_proposee && (
+                <div className="similar-box" style={{ borderLeft: "3px solid #22c55e" }}>
+                  <strong style={{ color: "#16a34a", fontSize: 12 }}>✓ Solution proposée</strong>
+                  <p style={{ fontSize: 13, margin: "4px 0 0" }}>{lastAssistantState.solution_proposee}</p>
                 </div>
-              ) : null}
-              {lastAssistantState.solution_proposee ? (
-                <div className="similar-box">
-                  <strong>{assistantSolutionLabel(lastAssistantState)}</strong>
-                  <p>{lastAssistantState.solution_proposee}</p>
-                </div>
-              ) : null}
-              {lastAssistantState.infos_manquantes ? (
-                <div className="similar-box">
-                  <strong>Informations encore manquantes</strong>
-                  <p>{lastAssistantState.infos_manquantes}</p>
-                </div>
-              ) : null}
-              {lastAssistantState.resume_technicien ? (
-                <div className="similar-box">
-                  <strong>Resume prepare pour le technicien</strong>
-                  <p>{lastAssistantState.resume_technicien}</p>
-                </div>
-              ) : null}
-              <div className="similar-box">
-                <strong>Informations saisies</strong>
-                <p>Module : {form.module || lastAssistantState.module || "non renseigne"}</p>
-                <p>Logiciel : {form.softwareName || "non renseigne"}</p>
-                <p>Version : {form.softwareVersion || "non renseignee"}</p>
-                <p>Telephone : {form.phone || "non renseigne"}</p>
-                <p>Priorite : {priorityLabel(form.priority)}</p>
-                <p>Escalade : {lastAssistantState.escalade_necessaire ? "oui" : "non"}</p>
-              </div>
+              )}
+
               <div className="action-row create-actions">
-                <button type="button" className="secondary-action" onClick={openCreateForm}>Modifier le formulaire</button>
+                <button type="button" className="secondary-action" onClick={openCreateForm}>Modifier</button>
                 <button type="button" className="primary-action" onClick={() => { archiveCurrentConversation(); setPage("tickets"); }}>Terminer</button>
               </div>
             </aside>

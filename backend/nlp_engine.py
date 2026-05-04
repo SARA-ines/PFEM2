@@ -5,11 +5,10 @@ from pathlib import Path
 import sys
 
 import spacy
-from sentence_transformers import SentenceTransformer
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from embedding_config import EMBEDDING_MODEL_NAME
+from embedding_config import get_embedder
 from preprocessing import prepare_ticket_text
 from classifier_engine import load_classifier_bundle, predict_labels
 
@@ -18,7 +17,6 @@ try:
 except Exception:
     nlp = spacy.blank("fr")
 
-embedder = SentenceTransformer(EMBEDDING_MODEL_NAME)
 CLASSIFIER_BUNDLE = load_classifier_bundle()
 
 INTENTIONS = {
@@ -614,7 +612,7 @@ def analyze(text: str) -> dict:
             type_confidence = max(type_confidence, predicted_type_scores.get(type_incident, 0.0))
 
     entities = extract_entities(text)
-    embedding = embedder.encode(working_text).tolist()
+    embedding = get_embedder().encode(working_text).tolist()
 
     best_type_score = max(type_scores.values()) if type_scores else 0.0
     confidence = round(

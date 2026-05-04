@@ -1,0 +1,226 @@
+Total questions de clarification: 29
+
+Ticket #1062
+Objet: Mouvements Ajustement
+Question a poser:
+Pouvez-vous m'envoyer l'état par mail ?
+Reponse historique:
+Bonjour ,
+Merci de m'envoyer l'état par mail
+----------------------------------------------------------------------------------------------------
+Ticket #1067
+Objet: Etat de sortie "Liste des Sorties"
+Question a poser:
+Pouvez-vous me préciser le nom de l'état ?
+Reponse historique:
+veuillez me préciser le nom de l'état
+----------------------------------------------------------------------------------------------------
+Ticket #1137
+Objet: Etat relevé des emoluments
+Question a poser:
+Pouvez-vous preciser : on a bien reçu votre préoccupation on vous, réglera cette anomalies dans la prochaine version, entre temp merci de nous envoyer une copie sur la base de données afin de faire des testes salutations ?
+Reponse historique:
+Bonjour
+on a bien reçu votre préoccupation on vous, réglera cette anomalies dans la prochaine version, entre temp merci de nous envoyer une copie sur la base de données afin de faire des testes  
+salutations
+----------------------------------------------------------------------------------------------------
+Ticket #1148
+Objet: Importation données
+Question a poser:
+Pouvez-vous nous envoyer votre numéro téléphone et mail pour vous repondre ?
+Reponse historique:
+merci de nous envoyer votre numéro téléphone et mail pour vous repondre
+----------------------------------------------------------------------------------------------------
+Ticket #1151
+Objet: Volet facturation.
+Question a poser:
+Pouvez-vous nous donner un accès distant ( Anydesk ) pour voir les anomalies à votre niveau, un numéro de téléphone pour vous joindre : ou nous envoyer la base en question ?
+Reponse historique:
+Merci de nous donner un accès distant ( Anydesk ) pour voir les anomalies à votre niveau, un numéro de téléphone pour vous joindre : ou  nous envoyer la base en question.
+----------------------------------------------------------------------------------------------------
+Ticket #1158
+Objet: A/S intervention sur big-finance
+Question a poser:
+Pouvez-vous nous expliquer votre problème sur les immobilisations ?
+Reponse historique:
+merci de nous expliquer votre problème sur les immobilisations
+----------------------------------------------------------------------------------------------------
+Ticket #1168
+Objet: A / S : Interface BIG Finance Ain Temouchent
+Question a poser:
+Pouvez-vous m'envoyer l'accès Anydesk a fin de voir le problème de pré ?
+Reponse historique:
+Merci de m'envoyer l'accès Anydesk a fin de voir le problème de pré .
+----------------------------------------------------------------------------------------------------
+Ticket #1170
+Objet: configuration des paramètres 
+Question a poser:
+Pouvez-vous nous appeler sur ce num 0770327785 ?
+Reponse historique:
+merci de nous appeler sur ce num 0770327785
+----------------------------------------------------------------------------------------------------
+Ticket #1253
+Objet: Erreur d'affichage dans l'interrogation des écritures,
+Question a poser:
+Pouvez-vous preciser : SALAM MERCI DE m'envoyer le numéro de version ?
+Reponse historique:
+SALAM 
+
+MERCI DE m'envoyer le numéro de version
+----------------------------------------------------------------------------------------------------
+Ticket #1275
+Objet: Ergonomie 
+Question a poser:
+Pouvez-vous nous envoyer l'état a rectifier ?
+Reponse historique:
+merci de nous envoyer l'état a rectifier .
+----------------------------------------------------------------------------------------------------
+Ticket #1314
+Objet: Lenteur du système 
+Question a poser:
+Pouvez-vous nous envoyer la base de données afin de tester cette lenteur a notre niveau , Slts ?
+Reponse historique:
+Bonjour ,
+Merci de nous envoyer la base de données afin de tester cette lenteur a notre niveau ,
+Slts
+----------------------------------------------------------------------------------------------------
+Ticket #1377
+Objet: A/S BIG SOFT
+Question a poser:
+Pouvez-vous preciser : 5- le mode de règlement, lors de l'enregistrement de la facture n'est pas accepté pour "au comptant", veuillez nous préciser ?
+Reponse historique:
+1- Le montant TTC et le net à payer de la facture n°CS0001 du 17/01/2021 (jointe en attachement) ne sont pas identiques, ça se règle par l'application comme discuté au téléphone.
+2- la date de versement et la référence ne s'affichent pas, état rectifier.
+3- lors de la saisie de la référence, le numéro alphanumérique n'est pas accepté,(en développement).
+4- La liste nature(recette/dépense) vide voir masque de saisie facture,si vue sur le masque est vide veuillez donner les permissions au groupe pour cette fonction.
+5- le mode de règlement, lors de l'enregistrement de la facture n'est pas accepté pour "au comptant", veuillez nous préciser.
+6- lors de l'enregistrement du BL (Bon de Livraison) il y'a un masque d'erreur qui apparait (voir le masque en pièce jointe.
+Merci pour votre intervention. à voir .
+----------------------------------------------------------------------------------------------------
+Ticket #1382
+Objet: AS\Prêt social
+Question a poser:
+Pouvez-vous preciser : le volet prêt n'est pas limité , si vous avez besoin d'assistance merci de nous donner accès via ANY DESK ?
+Reponse historique:
+bonjour , le volet prêt n'est pas limité , si vous avez besoin d'assistance merci de nous donner accès via ANY DESK
+----------------------------------------------------------------------------------------------------
+Ticket #1561
+Objet: message d'erreur
+Question a poser:
+Pouvez-vous nous envoyer les messages d'erreurs ?
+Reponse historique:
+Bonjour, 
+Merci de nous envoyer les messages d'erreurs .
+----------------------------------------------------------------------------------------------------
+Ticket #1786
+Objet: PB_Balance
+Question a poser:
+Pouvez-vous nous envoyer une sauvegarde de la bdd sur l'adresse belghomari.meryem@gmail.com ?
+Reponse historique:
+merci de nous envoyer une sauvegarde de la bdd sur l'adresse belghomari.meryem@gmail.com
+----------------------------------------------------------------------------------------------------
+Ticket #1860
+Objet: débridage de licence bigGestion
+Question a poser:
+Pouvez-vous preciser : Mr , Merci de nous envoyer le fichier en pdf ?
+Reponse historique:
+Bonjour Mr ,
+Merci de nous envoyer le fichier en pdf
+----------------------------------------------------------------------------------------------------
+Ticket #2296
+Objet: demande d'intervention 
+Question a poser:
+Pouvez-vous nous appeler sur le numero de notre direction, car le numero que vous avez donné est incorrecte ?
+Reponse historique:
+Bonjour, merci de nous appeler sur le numero de notre direction, car le numero que vous avez donné est incorrecte
+----------------------------------------------------------------------------------------------------
+Ticket #2365
+Objet: Réouverture Big Gestion
+Question a poser:
+Pouvez-vous e préciser de quelle unité il s'agit et un numéro de téléphone joignable ?
+Reponse historique:
+Merci de préciser de quelle unité il s'agit et un numéro de téléphone joignable
+----------------------------------------------------------------------------------------------------
+Ticket #2461
+Objet: Anomalies BIGPaie
+Question a poser:
+Pouvez-vous preciser : Mr Merci de nous communiquer votre numéro de téléphone a fin de pouvoir vos contacter Salutation ?
+Reponse historique:
+Bonjour Mr 
+Merci de nous communiquer votre numéro de téléphone a fin de pouvoir vos contacter 
+Salutation
+----------------------------------------------------------------------------------------------------
+Ticket #2557
+Objet: changer l'unite Centrale de serveur BIg Gestion
+Question a poser:
+Pouvez-vous m'’envoyer un numéro de téléphone afin de vous contacter et vous appeler ?
+Reponse historique:
+Merci de m’envoyer un numéro de téléphone afin de vous contacter et vous appeler
+----------------------------------------------------------------------------------------------------
+Ticket #2697
+Objet: BIGPAIE
+Question a poser:
+Pouvez-vous e vérifier la configuration pour que je puisse travailler sans coupure ?
+Reponse historique:
+La connexion VPN se coupe au bout d’environ une minute ce qui m’empêche d’intervenir. Merci de vérifier la configuration pour que je puisse travailler sans coupure
+----------------------------------------------------------------------------------------------------
+Ticket #2719
+Objet: Problème état d’impression 
+Question a poser:
+Pouvez-vous preciser : c'est quoi le probleme exact?
+Reponse historique:
+c'est quoi le probleme exact?
+----------------------------------------------------------------------------------------------------
+Ticket #2804
+Objet: probleme regénération des stocks
+Question a poser:
+Pouvez-vous nous communiquer plus de détail concernant ce problème ?
+Reponse historique:
+Merci de nous communiquer plus de détail concernant ce problème
+----------------------------------------------------------------------------------------------------
+Ticket #2753
+Objet: Option récapitulatif Base AMK
+Question a poser:
+Pouvez-vous preciser : numéro injoignable , merci de nous envoyer un numéro joignable ou me contacter au 0770539855 ?
+Reponse historique:
+numéro injoignable , merci de nous envoyer un numéro joignable ou me contacter au 0770539855
+----------------------------------------------------------------------------------------------------
+Ticket #2786
+Objet: Probléme Big paie 0664392485
+Question a poser:
+Pouvez-vous nous envoyer votre numéro de téléphone pour vous contacter ?
+Reponse historique:
+merci de nous envoyer votre numéro de téléphone pour vous contacter
+----------------------------------------------------------------------------------------------------
+Ticket #2841
+Objet: Afficher REF-OT
+Question a poser:
+Pouvez-vous nous communiquer plus de détail ?
+Reponse historique:
+Merci de nous communiquer plus de détail
+----------------------------------------------------------------------------------------------------
+Ticket #2883
+Objet: Signalement d'erreur sur l'application BIGFINNANCE lors de chargement des données
+Question a poser:
+Pouvez-vous preciser : Afin de nous permettre d’investiguer et de résoudre le problème efficacement, pourriez-vous nous préciser la nature exacte des erreurs rencontrées, ainsi que les étapes pour les reproduire ?
+Reponse historique:
+Salam
+Merci de nous avoir signalé que les dysfonctionnements persistent après la mise à jour du 26 novembre.
+Afin de nous permettre d’investiguer et de résoudre le problème efficacement, pourriez-vous nous préciser la nature exacte des erreurs rencontrées, ainsi que les étapes pour les reproduire ?
+Notre équipe technique pourra intervenir à partir de mercredi 10 décembre 2025. Vous pouvez nous contacter au 07 70 32 77 85 à partir de 9h00.
+Nous restons à votre service pour toute information complémentaire
+----------------------------------------------------------------------------------------------------
+Ticket #3023
+Objet: PROBLEME BIG GESTION 
+Question a poser:
+Pouvez-vous nous donner plus de détail concernant le problème ?
+Reponse historique:
+Merci de nous donner plus de détail concernant le problème
+----------------------------------------------------------------------------------------------------
+Ticket #3034
+Objet: Logiciel de gestion de stock
+Question a poser:
+Pouvez-vous preciser : Suite a notre communication téléphonique merci de nous donner un accès a distance pour pouvoir vérifier le problème signalé ?
+Reponse historique:
+Suite a notre communication téléphonique merci de nous donner un accès a distance pour pouvoir vérifier le problème signalé
+----------------------------------------------------------------------------------------------------

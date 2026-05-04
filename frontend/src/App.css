@@ -561,9 +561,11 @@ textarea {
 
 .chatbot-ticket-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.75fr);
   gap: 22px;
   margin-top: 22px;
+  height: clamp(680px, calc(100vh - 150px), 920px);
+  overflow: hidden;
 }
 
 .create-ticket-panel,
@@ -571,15 +573,32 @@ textarea {
   margin-top: 0;
 }
 
-.chatbot-panel,
+.chatbot-panel {
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
 .chatbot-side-panel {
   margin-top: 0;
+  overflow-y: auto;
+  height: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: #c7d9f5 transparent;
 }
 
 .chatbot-shell {
-  display: grid;
-  gap: 14px;
-  min-height: 760px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  gap: 0;
+  border: 1px solid #dce8ff;
+  border-radius: 20px;
+  background: #fff;
 }
 
 .chatbot-header {
@@ -587,9 +606,10 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 16px 18px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #eef4ff 0%, #dce8ff 100%);
+  padding: 14px 18px;
+  border-radius: 20px 20px 0 0;
+  background: linear-gradient(135deg, #204779 0%, #2f67a8 100%);
+  flex-shrink: 0;
 }
 
 .chatbot-header strong,
@@ -598,13 +618,27 @@ textarea {
 }
 
 .chatbot-header strong {
-  color: #17355a;
+  color: #fff;
+  font-size: 0.95rem;
 }
 
 .chatbot-header span {
-  margin-top: 4px;
-  color: #5a769b;
-  font-size: 0.9rem;
+  margin-top: 3px;
+  color: rgba(255,255,255,0.72);
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chatbot-header span::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+  flex-shrink: 0;
 }
 
 .ticket-context-banner {
@@ -668,27 +702,87 @@ textarea {
 
 .chatbot-input-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: end;
+  grid-template-columns: minmax(0, 1fr) 122px;
+  gap: 14px;
+  align-items: stretch;
+  flex-shrink: 0;
+  padding: 14px 20px 16px;
+  border-top: 1px solid #e8eef6;
+  background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
 }
 
 .chatbot-input-row textarea {
   width: 100%;
-  min-height: 92px;
-  resize: vertical;
-  border: 1px solid #dbe5f1;
-  border-radius: 18px;
-  padding: 16px 18px;
-  background: #f7f9fc;
+  min-height: 78px;
+  max-height: 150px;
+  resize: none;
+  border: 1px solid #cfdef2;
+  border-radius: 20px;
+  padding: 16px 20px;
+  background: #fbfdff;
   color: #173457;
   outline: none;
+  line-height: 1.55;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 .chatbot-input-row textarea:focus {
   border-color: #83aaf8;
   background: #fff;
   box-shadow: 0 0 0 4px rgba(53, 118, 236, 0.1);
+}
+
+.chatbot-input-row .primary-action {
+  min-height: 54px;
+  align-self: end;
+  border-radius: 18px;
+}
+
+/* ── Résumé side panel ── */
+.chatbot-side-panel > .client-hero-label {
+  margin: 0 0 6px;
+  color: #1c6cff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.chatbot-side-panel > h3 {
+  margin: 0 0 18px;
+  font-size: 1.05rem;
+  color: #17355a;
+  line-height: 1.3;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #e0eaff;
+}
+
+.chatbot-side-panel .similar-box {
+  border-left: 3px solid #1c6cff;
+  border-radius: 0 16px 16px 0;
+}
+
+.chatbot-side-panel .similar-box strong {
+  color: #1c6cff;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+
+.chatbot-side-panel .similar-box td {
+  padding: 5px 8px 5px 0;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(224, 234, 255, 0.6);
+}
+
+.chatbot-side-panel .similar-box tr:last-child td {
+  border-bottom: 0;
+}
+
+.chatbot-side-panel .action-row {
+  margin-top: 18px;
 }
 
 .assistant-history-list {
@@ -2015,6 +2109,20 @@ textarea {
   .reports-grid {
     grid-template-columns: 1fr;
   }
+
+  .chatbot-ticket-layout {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .chatbot-panel {
+    min-height: 680px;
+  }
+
+  .chatbot-side-panel {
+    height: auto;
+  }
 }
 
 @media (max-width: 760px) {
@@ -2089,6 +2197,18 @@ textarea {
   .switch-btn,
   .client-main-tab {
     width: 100%;
+  }
+
+  .chatbot-input-row {
+    grid-template-columns: 1fr;
+  }
+
+  .chatbot-panel {
+    min-height: 620px;
+  }
+
+  .chatbot-input-row .primary-action {
+    min-height: 52px;
   }
 
   .client-panel-head {
