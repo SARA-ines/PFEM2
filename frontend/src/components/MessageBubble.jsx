@@ -1,70 +1,52 @@
-import ConfidenceBar from "./ConfidenceBar";
-
-const URGENCE_COLOR = {
-  bas: "#22c55e",
-  moyen: "#f59e0b",
-  haut: "#ef4444",
-  critique: "#7c3aed",
-};
-
 export default function MessageBubble({ msg }) {
   const isUser = msg.role === "user";
-  const state = msg.state || {};
-  const hideDetails = Boolean(state.hide_details_in_bubble);
 
   return (
     <div
       style={{
         display: "flex",
         justifyContent: isUser ? "flex-end" : "flex-start",
-        marginBottom: 12,
+        marginBottom: 16,
+        alignItems: "flex-end",
+        gap: 10,
       }}
     >
+      {!isUser && (
+        <div
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: "50%",
+            background: "linear-gradient(135deg, #2563eb, #7c3aed)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            fontSize: 15,
+            color: "#fff",
+            fontWeight: 700,
+          }}
+        >
+          B
+        </div>
+      )}
+
       <div
         style={{
-          maxWidth: "78%",
-          padding: "10px 14px",
-          borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-          background: isUser ? "#2563eb" : "#f3f4f6",
-          color: isUser ? "#fff" : "#111827",
-          fontSize: 14,
-          lineHeight: 1.5,
+          maxWidth: "84%",
+          padding: "14px 18px",
+          borderRadius: isUser ? "20px 20px 6px 20px" : "6px 20px 20px 20px",
+          background: isUser ? "#2563eb" : "#ffffff",
+          color: isUser ? "#ffffff" : "#111827",
+          fontSize: 16,
+          lineHeight: 1.7,
+          boxShadow: "0 6px 18px rgba(15, 35, 65, 0.08)",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
         }}
       >
-        <div>{msg.content}</div>
-        {!isUser && msg.state && !hideDetails && (
-          <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #d1d5db", fontSize: 12 }}>
-            {state.module && <span style={chip("#dbeafe", "#1d4ed8")}>Module: {state.module}</span>}
-            {state.software && <span style={chip("#e0f2fe", "#0369a1")}>Logiciel: {state.software}</span>}
-            {state.software_version && <span style={chip("#f1f5f9", "#475569")}>Version: {state.software_version}</span>}
-            {state.type_incident && <span style={chip("#ede9fe", "#6d28d9")}>Type: {state.type_incident}</span>}
-            {state.niveau_urgence && (
-              <span
-                style={chip(
-                  `${URGENCE_COLOR[state.niveau_urgence] || "#6b7280"}22`,
-                  URGENCE_COLOR[state.niveau_urgence] || "#6b7280"
-                )}
-              >
-                Urgence: {state.niveau_urgence}
-              </span>
-            )}
-            {state.escalade_necessaire && <span style={chip("#fee2e2", "#dc2626")}>Escalade</span>}
-            {state.confidence_score !== undefined && <ConfidenceBar score={state.confidence_score} />}
-          </div>
-        )}
+        {msg.content}
       </div>
     </div>
   );
-}
-
-function chip(bg, fg) {
-  return {
-    display: "inline-block",
-    background: bg,
-    color: fg,
-    padding: "2px 8px",
-    borderRadius: 999,
-    marginRight: 6,
-    marginBottom: 6,
-  };
 }

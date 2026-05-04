@@ -13,8 +13,8 @@ def rewrite_rag_solution(objet: str, solution: str, module: str = "", type_incid
 
     if not clean_solution:
         if clean_objet:
-            return f"Un cas similaire a ete retrouve concernant {clean_objet}."
-        return "Un cas similaire a ete retrouve, mais la solution associee n'est pas detaillee."
+            return f"Pour avancer sur {clean_objet}, il me faut encore une precision technique."
+        return "Il me faut encore une precision technique pour vous orienter correctement."
 
     solution_low = clean_solution.lower()
     if "aucune anomalie" in solution_low:
@@ -27,14 +27,14 @@ def rewrite_rag_solution(objet: str, solution: str, module: str = "", type_incid
 
     if module and type_incident:
         return (
-            f"Un cas similaire a ete retrouve sur le module {module} pour un incident de type "
-            f"{type_incident}. Solution proposee : {clean_solution}"
+            f"Pour ce probleme sur le module {module}, de type {type_incident}, "
+            f"voici la demarche a suivre : {clean_solution}"
         )
 
     if module:
-        return f"Un cas similaire a ete retrouve sur le module {module}. Solution proposee : {clean_solution}"
+        return f"Pour ce probleme sur le module {module}, voici la demarche a suivre : {clean_solution}"
 
-    return f"Un cas similaire a ete retrouve. Solution proposee : {clean_solution}"
+    return f"Voici la demarche a suivre : {clean_solution}"
 
 
 def apply_business_logic(llm_result: dict, nlp_result: dict, context: dict) -> dict:
@@ -82,13 +82,15 @@ def apply_business_logic(llm_result: dict, nlp_result: dict, context: dict) -> d
             f"Informations a recuperer: {llm_result['infos_manquantes']}"
         )
         llm_result["solution_proposee"] = ""
-        llm_result["reponse"] = (
-            "Je ne suis pas encore assez sur pour proposer une solution fiable. "
-            "Merci de verifier que les informations affichees dans le resume sont correctes, puis de me donner : "
-            f"{llm_result['infos_manquantes']}. "
-            "Ensuite, votre ticket sera assigne a un technicien qui vous repondra le plus tot possible."
-        )
         llm_result["statut"] = "qualification"
+        # Ne remplace la réponse que si le LLM n'en a pas fourni une
+        if not llm_result.get("reponse", "").strip():
+            llm_result["reponse"] = (
+                "Je ne suis pas encore assez sur pour proposer une solution fiable. "
+                "Merci de verifier que les informations affichees dans le resume sont correctes, puis de me donner : "
+                f"{llm_result['infos_manquantes']}. "
+                "Ensuite, votre ticket sera assigne a un technicien qui vous repondra le plus tot possible."
+            )
 
     if combined < 0.42:
         llm_result["escalade_necessaire"] = True

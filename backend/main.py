@@ -9,6 +9,7 @@ import re
 import secrets
 import sys
 import time
+import unicodedata
 import uuid
 from pathlib import Path
 
@@ -16,7 +17,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.exc import IntegrityError
 
 load_dotenv(Path(__file__).with_name(".env"))
@@ -26,7 +27,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 
 from business_logic import rewrite_rag_solution
-from database import ClientLogiciel, ConversationSession, Logiciel, Message, SessionLocal, Ticket, User
+from database import ClientLogiciel, ConversationSession, Logiciel, LogicielVersion, Message, SessionLocal, Ticket, User
 from nlp_engine import analyze
 from preprocessing import prepare_ticket_text
 from rag_engine import rag
@@ -61,9 +62,9 @@ class ClientTicketCreate(BaseModel):
     software_name: str = ""
     software_version: str = ""
     description: str
+    fonctionnalites: str = ""
     priority: str
     phone: str
-    file_name: str = ""
     requester_name: str = "Marc Dupont"
     client_name: str = "BIG Logistique Algerie"
     client_id: str = "client-big-logistics"
@@ -446,6 +447,131 @@ def is_vague(question: str) -> bool:
     return len(specific_words) < 3
 
 
+def normalize_rule_text(*values: str) -> str:
+    text = " ".join(str(value or "") for value in values)
+    text = text.lower()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = re.sub(r"[^a-z0-9\s]", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def is_consultant_escalation_request(question: str, ticket_context: dict | None = None) -> bool:
+    tc = ticket_context or {}
+    text = normalize_rule_text(
+        question,
+        tc.get("title", ""),
+        tc.get("description", ""),
+        tc.get("fonctionnalites", ""),
+    )
+    if not text:
+        return False
+
+    if "consultant" in text:
+        return True
+
+    if "migration" in text and any(
+        term in text for term in ("donnees", "base", "serveur", "complete", "ancien", "nouveau")
+    ):
+        return True
+
+    if any(term in text for term in ("reprise de donnees", "transfert de donnees", "import historique")):
+        return True
+
+    if "formation" in text and any(term in text for term in ("utilisateur", "users", "module", "assistance")):
+        return True
+
+    if any(term in text for term in ("configuration complete", "parametrage complet", "mise en place complete")):
+        return True
+
+    if "assistance" in text and any(term in text for term in ("configuration", "parametrage", "formation", "gpao")):
+        return True
+
+    return False
+
+
+def is_direct_calculation_problem(question: str, nlp_result: dict | None = None) -> bool:
+    text = normalize_rule_text(question)
+    if (nlp_result or {}).get("type_incident") == "calcul":
+        return True
+    return any(
+        term in text
+        for term in (
+            "calcul",
+            "montant",
+            "ttc",
+            "tva",
+            "total ht",
+            "irg",
+            "cump",
+            "cotisation",
+            "ecart",
+            "stock negatif",
+            "quantite",
+            "prix",
+        )
+    )
+
+
+def is_interface_output_problem(question: str) -> bool:
+    text = normalize_rule_text(question)
+    return any(
+        term in text
+        for term in (
+            "impression",
+            "etat",
+            "affichage",
+            "rapport",
+            "crystal",
+            "ecran",
+            "vide",
+        )
+    )
+
+
+def is_version_sensitive_problem(question: str, nlp_result: dict | None = None) -> bool:
+    text = normalize_rule_text(question)
+    strong_version_terms = (
+        "cloture",
+        "ecritures de report",
+        "report a nouveau",
+        "reouverture",
+        "exercice",
+        "installation",
+        "reinstallation",
+        "mise a jour",
+        "version",
+        "parametrage",
+    )
+    if is_interface_output_problem(question) and not any(term in text for term in strong_version_terms):
+        return False
+    if (nlp_result or {}).get("type_incident") == "configuration":
+        return True
+    return any(
+        term in text
+        for term in strong_version_terms
+    )
+
+
+def should_force_version_check(question: str, nlp_result: dict, ticket_context: dict | None = None) -> bool:
+    tc = ticket_context or {}
+    client_version = (
+        tc.get("version")
+        or nlp_result.get("software_version")
+        or ""
+    ).strip()
+    if not client_version:
+        return False
+    if is_direct_calculation_problem(question, nlp_result) and not is_version_sensitive_problem(question, nlp_result):
+        return False
+
+    software_name = tc.get("software") or tc.get("software_name") or nlp_result.get("software") or ""
+    latest_version = get_latest_version_for_software(software_name)
+    if not latest_version or latest_version.strip() == client_version:
+        return False
+    return is_version_sensitive_problem(question, nlp_result)
+
+
 def rag_vote_scores(similar: list[dict], key: str) -> dict[str, float]:
     votes = {}
     for ticket in similar:
@@ -528,12 +654,20 @@ def build_rag_only_response(question: str, nlp_result: dict, similar: list[dict]
 
     if similar:
         best = similar[0]
-        solution_text = best["solution"]
-        reponse = (
-            f"Cas similaire trouve ({best['similarity']:.0%} de correspondance) :\n"
-            f"{rewrite_rag_solution(best['objet'], solution_text, nlp_result.get('module', ''), nlp_result.get('type_incident', ''))}"
-        )
-        if len(similar) > 1:
+        if best.get("response_type") == "clarification" and best.get("clarification_question"):
+            solution_text = best["clarification_question"]
+            reponse = solution_text
+            statut = "qualification"
+        else:
+            solution_text = best["solution"]
+            reponse = rewrite_rag_solution(
+                best["objet"],
+                solution_text,
+                nlp_result.get("module", ""),
+                nlp_result.get("type_incident", ""),
+            )
+            statut = "solution_proposee"
+        if False and len(similar) > 1:
             reponse += f"\n\nAutre cas similaire : {similar[1]['objet']} — {similar[1]['solution'][:150]}"
 
         confidence = round(
@@ -547,7 +681,6 @@ def build_rag_only_response(question: str, nlp_result: dict, similar: list[dict]
             ),
             2,
         )
-        statut = "solution_proposee"
     else:
         # Pas de ticket similaire : réponse de qualification basée sur NLP
         module = nlp_result.get("module", "")
@@ -590,6 +723,8 @@ def build_rag_only_response(question: str, nlp_result: dict, similar: list[dict]
                 "module": t.get("module", ""),
                 "type": t.get("type", ""),
                 "solution": t.get("solution", ""),
+                "response_type": t.get("response_type", "solution"),
+                "clarification_question": t.get("clarification_question", ""),
             }
             for t in similar
         ],
@@ -768,18 +903,61 @@ def build_technician_summary_v2(
     return " | ".join(parts)
 
 
+GENERIC_SOLUTION_BY_TYPE = {
+    "permission": (
+        "Verifiez d'abord les droits de l'utilisateur sur le module concerne, puis reconnectez-vous avec un profil "
+        "administrateur pour confirmer que le blocage ne vient pas d'un role ou d'une licence expiree. Si l'acces "
+        "reste refuse, transmettez le message exact au support pour correction des droits."
+    ),
+    "calcul": (
+        "Controlez les parametres de calcul du document, les taux appliques et les lignes source, puis regenerez le "
+        "calcul apres sauvegarde. Si l'ecart persiste, joignez un exemple chiffre afin qu'un technicien compare les "
+        "donnees en base avec le resultat affiche."
+    ),
+    "interface": (
+        "Regenerer l'etat, verifier le modele d'impression et relancer l'application suffit souvent pour isoler le "
+        "probleme. Si l'etat reste vide, il faut joindre le nom exact de l'etat et une capture du resultat."
+    ),
+    "performance": (
+        "Verifiez d'abord la connexion au serveur, le nombre de sessions ouvertes et l'etat du service SQL. Si la "
+        "lenteur persiste, un technicien devra controler les index, journaux et requetes lentes."
+    ),
+    "base_de_donnees": (
+        "Avant toute manipulation, faites une sauvegarde de la base. Relevez ensuite le message SQL exact, le nom de "
+        "la table ou de l'ecran concerne, puis transmettez ces elements pour correction technique."
+    ),
+    "configuration": (
+        "Verifiez le parametrage du module, l'exercice ou la periode active, puis relancez l'operation apres "
+        "validation des droits. Si le blocage continue, le ticket doit etre analyse par un technicien."
+    ),
+}
+
+
+def build_generic_solution_text(module: str, incident_type: str) -> str:
+    solution = GENERIC_SOLUTION_BY_TYPE.get(incident_type)
+    if not solution:
+        return ""
+    if module:
+        return f"Pour ce probleme sur le module {module}, voici la demarche conseillee : {solution}"
+    return f"Voici la demarche conseillee : {solution}"
+
+
 def build_rag_only_response_v2(question: str, nlp_result: dict, similar: list[dict], mode: str, session_state: dict | None = None) -> dict:
     best_type_score = max((nlp_result.get("type_scores") or {"": 0}).values()) if nlp_result.get("type_scores") else 0.0
     nlp_conf = float(nlp_result.get("confidence", 0.3))
     state = session_state or {}
     target_module = nlp_result.get("module", "")
     target_type = nlp_result.get("type_incident", "")
+    if target_type == "configuration" and is_interface_output_problem(question):
+        target_type = "interface"
+    if is_direct_calculation_problem(question, nlp_result):
+        similar = [ticket for ticket in similar if ticket.get("response_type") != "version_check"]
     filtered_similar = []
     for ticket in similar:
         similarity = float(ticket.get("similarity", 0))
         same_module = bool(target_module and ticket.get("module") == target_module)
         same_type = bool(target_type and ticket.get("type") == target_type)
-        min_similarity = 0.18 if (same_module or same_type) else 0.22
+        min_similarity = 0.28 if (same_module or same_type) else 0.32
         if similarity >= min_similarity:
             filtered_similar.append(ticket)
     best_similarity = float(filtered_similar[0].get("similarity", 0)) if filtered_similar else 0.0
@@ -788,13 +966,29 @@ def build_rag_only_response_v2(question: str, nlp_result: dict, similar: list[di
     if filtered_similar:
         similar = filtered_similar
         best = similar[0]
-        solution_text = best["solution"]
-        reponse = (
-            f"Cas similaire trouve ({best['similarity']:.0%} de correspondance) :\n"
-            f"{rewrite_rag_solution(best['objet'], solution_text, nlp_result.get('module', ''), nlp_result.get('type_incident', ''))}"
-        )
-        if len(similar) > 1:
-            reponse += f"\n\nAutre cas similaire : {similar[1]['objet']} - {similar[1]['solution'][:150]}"
+        if best.get("response_type") == "clarification" and best.get("clarification_question"):
+            solution_text = best["clarification_question"]
+            reponse = solution_text
+            statut = "qualification"
+            infos_manquantes = "precision technique"
+            missing_items = ["precision technique"]
+            next_question = solution_text
+            ready_for_assignment = False
+        else:
+            solution_text = best["solution"]
+            reponse = rewrite_rag_solution(
+                best["objet"],
+                solution_text,
+                nlp_result.get("module", ""),
+                nlp_result.get("type_incident", ""),
+            )
+            statut = "solution_proposee"
+            infos_manquantes = ""
+            missing_items = []
+            next_question = ""
+            ready_for_assignment = False
+        if False and len(similar) > 1:
+            pass
 
         confidence = round(
             min(
@@ -807,28 +1001,35 @@ def build_rag_only_response_v2(question: str, nlp_result: dict, similar: list[di
             ),
             2,
         )
-        statut = "solution_proposee"
-        infos_manquantes = ""
-        missing_items = []
-        next_question = ""
-        ready_for_assignment = False
     else:
-        missing_items = [field["label"] for field in pending_fields]
-        next_question = next_field["question"] if next_field else ""
-        solution_text = next_question or build_missing_info_request_v2(question, nlp_result)[0]
-        reponse = solution_text
-        confidence = round(min(0.35 + 0.25 * nlp_conf + 0.10 * best_type_score, 0.69), 2)
-        statut = "qualification" if confidence >= 0.40 else "escalade_technique"
-        infos_manquantes = "; ".join(missing_items)
-        similar = filtered_similar
-        ready_for_assignment = next_field is None
+        generic_solution = build_generic_solution_text(target_module, target_type)
+        if generic_solution and nlp_conf >= 0.58:
+            missing_items = []
+            next_question = ""
+            solution_text = generic_solution
+            reponse = solution_text
+            confidence = round(min(0.58 + 0.25 * nlp_conf + 0.10 * best_type_score, 0.82), 2)
+            statut = "solution_proposee"
+            infos_manquantes = ""
+            similar = filtered_similar
+            ready_for_assignment = False
+        else:
+            missing_items = [field["label"] for field in pending_fields]
+            next_question = next_field["question"] if next_field else ""
+            solution_text = next_question or build_missing_info_request_v2(question, nlp_result)[0]
+            reponse = solution_text
+            confidence = round(min(0.35 + 0.25 * nlp_conf + 0.10 * best_type_score, 0.69), 2)
+            statut = "qualification" if confidence >= 0.40 else "escalade_technique"
+            infos_manquantes = "; ".join(missing_items)
+            similar = filtered_similar
+            ready_for_assignment = next_field is None
 
     technician_summary = build_technician_summary_v2(question, nlp_result, similar, missing_items, collected_info)
     return {
         "reponse": reponse,
         "probleme_resume": question[:100],
         "module": nlp_result.get("module", ""),
-        "type_incident": nlp_result.get("type_incident", ""),
+        "type_incident": target_type,
         "niveau_urgence": "moyen",
         "bloquant": False,
         "statut": statut,
@@ -849,6 +1050,8 @@ def build_rag_only_response_v2(question: str, nlp_result: dict, similar: list[di
                 "module": t.get("module", ""),
                 "type": t.get("type", ""),
                 "solution": (t.get("solution", "") or "")[:150],
+                "response_type": t.get("response_type", "solution"),
+                "clarification_question": t.get("clarification_question", ""),
             }
             for t in similar
         ],
@@ -857,6 +1060,227 @@ def build_rag_only_response_v2(question: str, nlp_result: dict, similar: list[di
             "rag_similarity": round(nlp_result.get("avg_similarity_top3", similar[0]["similarity"] if similar else 0), 2),
             "type_agreement": round(nlp_result.get("rag_type_agreement", 0), 2),
             "mode": mode,
+            "n_similar": len(similar),
+        },
+    }
+
+
+def get_latest_version_for_software(software_name: str, software_id: str = "") -> str:
+    """Retourne la dernière version disponible d'un logiciel depuis logiciel_version.
+
+    Accepte soit l'ID numérique (ex: "825") soit le nom (ex: "BigPaie", "bigpaie").
+    Fait une correspondance partielle insensible à la casse sur nom_logiciel.
+    """
+    try:
+        with SessionLocal() as db:
+            lid = None
+
+            # ID numérique direct (ex: "825", "827")
+            sid = str(software_id or "").strip()
+            if sid.isdigit():
+                lid = int(sid)
+            elif software_name:
+                # Normalisation : minuscules, sans espaces ni tirets
+                def _norm(s: str) -> str:
+                    return s.lower().replace(" ", "").replace("-", "").replace("_", "")
+
+                target = _norm(software_name)
+                rows = db.execute(text("SELECT logiciel_id, nom_logiciel FROM logiciel")).fetchall()
+                for row in rows:
+                    if row[1] and (_norm(row[1]) == target or target in _norm(row[1]) or _norm(row[1]) in target):
+                        lid = row[0]
+                        break
+
+            if lid is None:
+                return ""
+
+            row = db.execute(
+                text("SELECT version_id FROM logiciel_version WHERE logiciel_id = :lid ORDER BY version_id DESC LIMIT 1"),
+                {"lid": lid},
+            ).scalar()
+            return str(row) if row is not None else ""
+    except Exception:
+        return ""
+
+
+def build_escalade_consultant_response(
+    question: str,
+    nlp_result: dict,
+    similar: list[dict],
+    session_state: dict,
+    ticket_context: dict | None = None,
+) -> dict:
+    collected_info, pending_fields, next_field = compute_collection_plan(question, nlp_result, session_state)
+    nlp_conf = float(nlp_result.get("confidence", 0.5))
+    all_collected = next_field is None
+
+    if all_collected:
+        reponse = (
+            "Merci pour toutes ces informations. Votre dossier est complet. "
+            "Un consultant specialise va prendre en charge votre demande et vous contactera dans les meilleurs delais."
+        )
+        next_question = ""
+        ready = True
+    else:
+        intro = (
+            "Ce type de probleme necessite l'intervention d'un consultant specialise. "
+            "Pour preparer votre dossier et vous mettre en relation rapidement, j'ai besoin de quelques informations. "
+            if not session_state.get("response_mode") == "escalade_consultant"
+            else "Merci. Pour completer votre dossier, "
+        )
+        reponse = f"{intro}{next_field['question']}"
+        next_question = next_field["question"]
+        ready = False
+
+    technician_summary = build_technician_summary_v2(
+        question, nlp_result, similar, [f["label"] for f in pending_fields], collected_info
+    )
+    confidence = round(min(0.60 + 0.15 * nlp_conf, 0.80), 2)
+    return {
+        "reponse": reponse,
+        "probleme_resume": question[:100],
+        "module": nlp_result.get("module", ""),
+        "type_incident": nlp_result.get("type_incident", ""),
+        "niveau_urgence": nlp_result.get("niveau_urgence", "moyen"),
+        "bloquant": False,
+        "statut": "escalade_consultant",
+        "solution_proposee": "",
+        "escalade_necessaire": True,
+        "infos_manquantes": "; ".join(f["label"] for f in pending_fields),
+        "next_question": next_question,
+        "collected_info": collected_info,
+        "resume_technicien": technician_summary,
+        "hide_details_in_bubble": False,
+        "confidence_score": confidence,
+        "ready_for_assignment": ready,
+        "tickets_similaires": [
+            {
+                "id": t["id"], "objet": t["objet"], "similarity": t["similarity"],
+                "module": t.get("module", ""), "type": t.get("type", ""),
+                "solution": "", "response_type": "escalade_consultant", "clarification_question": "",
+            }
+            for t in similar
+        ],
+        "metrics": {
+            "nlp_confidence": round(nlp_conf, 2),
+            "rag_similarity": round(similar[0]["similarity"] if similar else 0, 2),
+            "type_agreement": round(nlp_result.get("rag_type_agreement", 0), 2),
+            "mode": "ESCALADE_CONSULTANT",
+            "n_similar": len(similar),
+        },
+    }
+
+
+def build_version_check_response(
+    question: str,
+    nlp_result: dict,
+    similar: list[dict],
+    session_state: dict,
+    ticket_context: dict | None = None,
+) -> dict:
+    tc = ticket_context or {}
+    collected = session_state.get("collected_info") or {}
+
+    client_version = (
+        collected.get("software_version")
+        or tc.get("version")
+        or nlp_result.get("software_version")
+        or session_state.get("version")
+        or ""
+    ).strip()
+
+    # Récupère le nom du logiciel depuis le contexte ou le ticket similaire
+    software_name = tc.get("software") or tc.get("software_name") or nlp_result.get("software") or ""
+
+    # Récupère l'ID numérique du logiciel : priorité au ticket similaire (logiciel_id stocké comme "825")
+    # puis au ticket_context si disponible
+    sim_sw = similar[0].get("software", "") if similar else ""
+    if sim_sw and str(sim_sw).strip().isdigit():
+        software_id = sim_sw
+    else:
+        software_id = tc.get("logiciel_id") or ""
+        if not software_id:
+            software_name = software_name or sim_sw
+
+    latest_version = get_latest_version_for_software(software_name, str(software_id))
+    software_label = software_name or "votre logiciel"
+    nlp_conf = float(nlp_result.get("confidence", 0.5))
+
+    if not client_version:
+        reponse = (
+            f"Pour diagnostiquer ce probleme sur {software_label}, "
+            "pourriez-vous m'indiquer la version exacte que vous utilisez actuellement ? "
+            "(Accessible via le menu Aide > A propos)"
+        )
+        next_question = "Quelle est la version exacte du logiciel ?"
+        statut = "qualification"
+        escalade = False
+        confidence = round(min(0.50 + 0.15 * nlp_conf, 0.70), 2)
+        ready = False
+        version_info = {"client_version": "", "latest_version": latest_version, "is_latest": False}
+    elif latest_version and client_version.strip() != latest_version.strip():
+        reponse = (
+            f"Votre version actuelle ({client_version}) n'est pas la derniere version disponible de {software_label}. "
+            f"La derniere version est la {latest_version}. "
+            "La mise a jour resout generalement ce type de probleme. "
+            "Souhaitez-vous que je vous guide pour la mise a jour, ou preferez-vous qu'un technicien vous assiste ?"
+        )
+        next_question = ""
+        statut = "version_check"
+        escalade = False
+        confidence = round(min(0.72 + 0.10 * nlp_conf, 0.85), 2)
+        ready = False
+        version_info = {"client_version": client_version, "latest_version": latest_version, "is_latest": False}
+    else:
+        ctx = f"Vous utilisez deja la derniere version ({client_version})." if latest_version else f"Version utilisee : {client_version}."
+        reponse = (
+            f"{ctx} "
+            "Le probleme persiste malgre la mise a jour. "
+            "Je vais assigner votre ticket a un technicien specialise qui analysera le probleme en detail."
+        )
+        next_question = ""
+        statut = "escalade_technique"
+        escalade = True
+        confidence = round(min(0.74 + 0.10 * nlp_conf, 0.88), 2)
+        ready = True
+        version_info = {"client_version": client_version, "latest_version": latest_version, "is_latest": True}
+
+    technician_summary = (
+        f"Probleme: {question[:120]} | Logiciel: {software_label} | "
+        f"Version client: {client_version or 'non renseignee'} | "
+        f"Derniere version DB: {latest_version or 'inconnue'}"
+    )
+    return {
+        "reponse": reponse,
+        "probleme_resume": question[:100],
+        "module": nlp_result.get("module", ""),
+        "type_incident": "configuration",
+        "niveau_urgence": nlp_result.get("niveau_urgence", "moyen"),
+        "bloquant": False,
+        "statut": statut,
+        "solution_proposee": reponse if statut != "qualification" else "",
+        "escalade_necessaire": escalade,
+        "infos_manquantes": "version du logiciel" if not client_version else "",
+        "next_question": next_question,
+        "collected_info": dict(collected),
+        "resume_technicien": technician_summary,
+        "hide_details_in_bubble": False,
+        "confidence_score": confidence,
+        "ready_for_assignment": ready,
+        "version_info": version_info,
+        "tickets_similaires": [
+            {
+                "id": t["id"], "objet": t["objet"], "similarity": t["similarity"],
+                "module": t.get("module", ""), "type": t.get("type", ""),
+                "solution": "", "response_type": "version_check", "clarification_question": "",
+            }
+            for t in similar
+        ],
+        "metrics": {
+            "nlp_confidence": round(nlp_conf, 2),
+            "rag_similarity": round(similar[0]["similarity"] if similar else 0, 2),
+            "type_agreement": round(nlp_result.get("rag_type_agreement", 0), 2),
+            "mode": "VERSION_CHECK",
             "n_similar": len(similar),
         },
     }
@@ -1115,11 +1539,68 @@ def run_assistant(
             collected["version"] = ticket_context["version"]
         if ticket_context.get("title"):
             collected["titre"] = ticket_context["title"]
+        if ticket_context.get("fonctionnalites"):
+            collected["fonctionnalites"] = ticket_context["fonctionnalites"]
 
     tc = sess.get("ticket_context") or ticket_context or {}
 
+    PURE_GREETINGS = {"bonjour", "bonsoir", "salut", "hello", "bjr", "slt", "bsr", "hi", "coucou"}
+    question_clean = question.strip().lower()
+    is_greeting = question_clean in PURE_GREETINGS
+
+    # Salutation en cours de conversation : répéter la dernière question du bot
+    if is_greeting and sess["history"]:
+        last_bot_msg = next(
+            (m["content"] for m in reversed(sess["history"]) if m["role"] == "assistant"), ""
+        )
+        stored_module = sess["state"].get("module") or (normalize_module_value(tc.get("module", "")) if tc else "")
+        stored_type = sess["state"].get("type_incident") or ""
+        if last_bot_msg:
+            greeting_reply = f"Bonjour ! {last_bot_msg}"
+        elif stored_module:
+            greeting_reply = (
+                f"Bonjour ! Concernant votre probleme sur le module {stored_module}, "
+                "pouvez-vous preciser le message d'erreur exact affiche a l'ecran ?"
+            )
+        else:
+            greeting_reply = "Bonjour ! Pouvez-vous decrire votre probleme ?"
+        sess["history"].append({"role": "user", "content": question})
+        sess["history"].append({"role": "assistant", "content": greeting_reply})
+        persist_assistant_turn(
+            sess.get("user_id") or (client_profile or {}).get("user_id"),
+            sid, question, greeting_reply, sess["state"],
+        )
+        return {
+            "session_id": sid,
+            "answer": greeting_reply,
+            "state": {
+                "module": stored_module,
+                "type_incident": stored_type,
+                "statut": sess["state"].get("statut", "qualification"),
+                "solution_proposee": "",
+                "escalade_necessaire": False,
+                "infos_manquantes": "",
+                "confidence_score": 0.4,
+                "tickets_similaires": [],
+                "ready_for_assignment": False,
+            },
+        }
+
     prepared = prepare_ticket_text(question)
     working_question = prepared["enriched"] or question
+
+    # Pour les messages vagues (< 40 chars sans mots-clés), enrichir avec le contexte du formulaire
+    if is_vague(question) and tc and (tc.get("description") or tc.get("title")):
+        ctx_parts = [p for p in [
+            f"Titre: {tc['title']}" if tc.get("title") else "",
+            f"Description: {tc['description']}" if tc.get("description") else "",
+            f"Fonctionnalites: {tc['fonctionnalites']}" if tc.get("fonctionnalites") else "",
+        ] if p]
+        if ctx_parts:
+            ctx_text = "\n".join(ctx_parts)
+            ctx_prepared = prepare_ticket_text(ctx_text)
+            working_question = ctx_prepared["enriched"] or ctx_text
+
     nlp_result = analyze(working_question)
 
     # Injecter module/logiciel/version depuis le formulaire si NLP ne les détecte pas
@@ -1217,6 +1698,13 @@ def run_assistant(
         query_text=working_question,
         exclude_ticket_ids=exclude_ticket_ids or [],
     )
+    # Filtrer les tickets d'autres modules avant la fusion pour éviter la pollution du type
+    confirmed_module = nlp_result.get("module") or (normalize_module_value(tc.get("module", "")) if tc else "")
+    if confirmed_module and similar:
+        same_mod = [t for t in similar if t.get("module") == confirmed_module]
+        high_sim_other = [t for t in similar if t.get("module") != confirmed_module and float(t.get("similarity", 0)) >= 0.50]
+        if same_mod:
+            similar = same_mod + high_sim_other
     nlp_result = fuse_incident_predictions(nlp_result, similar)
     if explicit_module:
         nlp_result["module"] = explicit_module
@@ -1227,7 +1715,52 @@ def run_assistant(
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
     ollama_url = os.getenv("OLLAMA_URL", "").strip()
 
-    if use_llm and (has_real_anthropic_key(api_key) or ollama_url):
+    top_similar = similar[0] if similar else {}
+    response_mode = sess["state"].get("response_mode", "")
+
+    def _dominant_type(tickets: list[dict], rtype: str, top_n: int = 3) -> bool:
+        """Retourne True si rtype domine parmi les top_n tickets similaires."""
+        if not tickets:
+            return False
+        counts = {}
+        for t in tickets[:top_n]:
+            rt = t.get("response_type", "solution")
+            counts[rt] = counts.get(rt, 0) + float(t.get("similarity", 0))
+        return counts.get(rtype, 0) >= max(counts.values(), default=0) * 0.7
+
+    client_version_str = (tc.get("version") or "").strip()
+    consultant_escalation_requested = is_consultant_escalation_request(question, tc)
+    force_version_check = should_force_version_check(question, nlp_result, tc)
+    direct_calculation_problem = is_direct_calculation_problem(question, nlp_result)
+    allow_version_from_rag = (not client_version_str) or is_version_sensitive_problem(question, nlp_result)
+    response_similar = similar if allow_version_from_rag else [
+        ticket for ticket in similar if ticket.get("response_type") != "version_check"
+    ]
+    top_similar = response_similar[0] if response_similar else {}
+
+    if response_mode == "escalade_consultant":
+        final = build_escalade_consultant_response(question, nlp_result, similar, sess["state"], tc)
+    elif response_mode == "version_check":
+        final = build_version_check_response(question, nlp_result, similar, sess["state"], tc)
+    elif consultant_escalation_requested:
+        final = build_escalade_consultant_response(question, nlp_result, similar, sess["state"], tc)
+        sess["state"]["response_mode"] = "escalade_consultant"
+    elif force_version_check:
+        final = build_version_check_response(question, nlp_result, similar, sess["state"], tc)
+    elif not client_version_str and similar and not response_mode:
+        # Version inconnue mais tickets ERP trouves → demander la version en priorite
+        final = build_version_check_response(question, nlp_result, similar, sess["state"], tc)
+        sess["state"]["response_mode"] = "version_check"
+    elif _dominant_type(similar, "escalade_consultant"):
+        final = build_escalade_consultant_response(question, nlp_result, similar, sess["state"], tc)
+        sess["state"]["response_mode"] = "escalade_consultant"
+    elif _dominant_type(similar, "version_check") and allow_version_from_rag and not direct_calculation_problem:
+        final = build_version_check_response(question, nlp_result, similar, sess["state"], tc)
+        if not (tc.get("version") or nlp_result.get("software_version")):
+            sess["state"]["response_mode"] = "version_check"
+    elif top_similar.get("response_type") == "clarification":
+        final = build_rag_only_response_v2(question, nlp_result, response_similar, mode="RAG_CLARIFICATION", session_state=sess["state"])
+    elif use_llm and (has_real_anthropic_key(api_key) or ollama_url):
         from llm_engine import build_prompt, call_llm
         from business_logic import apply_business_logic
 
@@ -1236,19 +1769,20 @@ def run_assistant(
                 question,
                 sess["state"],
                 sess["history"][-6:],
-                similar,
+                response_similar,
                 nlp_result,
                 client_profile=profile,
                 ticket_context=tc,
             )
             llm_result = call_llm(prompt)
-            llm_result["_had_similar_tickets"] = len(similar) > 0
-            llm_result["_best_similarity"] = similar[0]["similarity"] if similar else 0.0
+            llm_result["_had_similar_tickets"] = len(response_similar) > 0
+            llm_result["_best_similarity"] = response_similar[0]["similarity"] if response_similar else 0.0
             final = apply_business_logic(llm_result, nlp_result, sess["state"])
-        except Exception:
-            final = build_rag_only_response_v2(question, nlp_result, similar, mode="RAG_ONLY_FALLBACK", session_state=sess["state"])
+        except Exception as _llm_err:
+            print(f"[LLM ERROR] {type(_llm_err).__name__}: {_llm_err}", flush=True)
+            final = build_rag_only_response_v2(question, nlp_result, response_similar, mode="RAG_ONLY_FALLBACK", session_state=sess["state"])
     else:
-        final = build_rag_only_response_v2(question, nlp_result, similar, mode="RAG_ONLY", session_state=sess["state"])
+        final = build_rag_only_response_v2(question, nlp_result, response_similar, mode="RAG_ONLY", session_state=sess["state"])
 
     sess["history"].append({"role": "user", "content": question})
     sess["history"].append({"role": "assistant", "content": final["reponse"]})
@@ -1267,6 +1801,9 @@ def run_assistant(
             if field["question"] == next_question:
                 sess["state"]["awaiting_field"] = field["id"]
                 break
+
+    if final.get("ready_for_assignment") or final.get("statut") in ("escalade_technique", "solution_proposee"):
+        sess["state"].pop("response_mode", None)
 
     persist_assistant_turn(
         sess.get("user_id") or (client_profile or {}).get("user_id"),
@@ -1915,9 +2452,11 @@ def create_client_ticket(payload: ClientTicketCreate, authorization: str | None 
         "version": payload.software_version,
         "priority": payload.priority,
         "description": payload.description,
+        "fonctionnalites": payload.fonctionnalites,
     }
     # On envoie la description comme premier message — le chatbot connaît déjà module/logiciel/version
-    first_message = payload.description or payload.title
+    fonc_suffix = f"\nFonctionnalites utilisees: {payload.fonctionnalites.strip()}" if payload.fonctionnalites.strip() else ""
+    first_message = (payload.description or payload.title) + fonc_suffix
     assistant_result = run_assistant(
         first_message,
         client_profile=profile,
@@ -1938,14 +2477,14 @@ def create_client_ticket(payload: ClientTicketCreate, authorization: str | None 
                 severity=payload.priority.capitalize(),
                 user_id=user_id,
                 createDateTime=now,
-                attachment_path=payload.file_name or None,
+                attachment_path=None,
                 assigned_to=None,
                 closed_by=None,
                 closedDateTime=None,
                 assignedDateTime=None,
                 logiciel_id=logiciel_id,
                 version_id=payload.software_version or None,
-                details=payload.description,
+                details=payload.description + (f"\n\nFonctionnalites: {payload.fonctionnalites.strip()}" if payload.fonctionnalites.strip() else ""),
                 module=payload.module,
                 assistant_session_id=assistant_result.get("session_id") or None,
             )

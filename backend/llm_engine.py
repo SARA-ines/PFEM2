@@ -28,14 +28,20 @@ def build_prompt(
     ) or "Aucun historique."
 
     if similar_tickets:
-        tickets_text = "\n".join(
-            f"- [{t['id']}] {t['module'] or 'inconnu'}/{t['type'] or 'inconnu'} (similarite: {t['similarity']:.0%})\n"
-            f"  Probleme: {t['description']}\n"
-            f"  Solution: {t['solution']}"
-            for t in similar_tickets[:2]
-        )
+        ticket_lines = []
+        for t in similar_tickets[:2]:
+            if t.get("response_type") == "clarification" and t.get("clarification_question"):
+                response_line = f"  Question a poser au client: {t['clarification_question']}"
+            else:
+                response_line = f"  Solution: {t['solution']}"
+            ticket_lines.append(
+                f"- [{t['id']}] {t['module'] or 'inconnu'}/{t['type'] or 'inconnu'} (similarite: {t['similarity']:.0%})\n"
+                f"  Probleme: {t['description']}\n"
+                f"{response_line}"
+            )
+        tickets_text = "\n".join(ticket_lines)
     else:
-        tickets_text = "Aucun ticket similaire trouve."
+        tickets_text = "Aucun contexte interne disponible."
 
     # Bloc ticket — infos du formulaire remplies par le client
     if ticket_context and any(ticket_context.get(k) for k in ("module", "software", "version", "title")):
@@ -77,86 +83,43 @@ Tickets recents :
     else:
         client_block = ""
 
-    return f"""Tu es un assistant expert en support ERP pour la societe BIG Informatique.
-Tu dois qualifier les incidents, proposer des solutions et escalader si necessaire.
-Tu connais le client qui te parle : utilise son profil pour personnaliser tes reponses.
+    module_val = context.get('module') or nlp_result.get('module') or ''
+    type_val = context.get('type_incident') or nlp_result.get('type_incident') or ''
+
+    return f"""Tu es l'assistant IA de BIG Informatique. Tu aides les clients a resoudre leurs problemes ERP.
+Tu parles comme un vrai humain, en francais naturel et chaleureux. Pas de jargon, pas de listes techniques.
 {ticket_block}{client_block}
-=== CONTEXTE ACTUEL DE LA SESSION ===
-Module ERP identifie : {context.get('module') or 'Non identifie'}
-Type d'incident      : {context.get('type_incident') or 'Non identifie'}
-Niveau d'urgence     : {context.get('niveau_urgence', 'moyen')}
-Bloquant             : {'Oui' if context.get('bloquant') else 'Non'}
-Statut actuel        : {context.get('statut', 'qualification')}
-Resume du probleme   : {context.get('probleme_resume') or 'En cours de qualification'}
-Infos manquantes     : {context.get('infos_manquantes') or 'Aucune'}
-
-=== ANALYSE NLP DU MESSAGE ===
-Intention detectee   : {nlp_result.get('intention', 'inconnu')}
-Score de confiance   : {nlp_result.get('confidence', 0):.0%}
-Entites extraites    : {json.dumps(nlp_result.get('entities', {}), ensure_ascii=False)}
-
-=== HISTORIQUE RECENT ===
+Historique de la conversation :
 {history_text}
 
-=== TICKETS SIMILAIRES (base de connaissances) ===
+Base de connaissances interne (NE PAS mentionner au client) :
 {tickets_text}
 
-=== MESSAGE ACTUEL DE L'UTILISATEUR ===
-{user_message}
+Dernier message du client : {user_message}
 
-=== COMPORTEMENT ATTENDU ===
-Tu es un assistant support ERP intelligent et conversationnel, comme ChatGPT mais specialise ERP.
-Tu LIS ce que dit le client et tu REPONDS a ce qu'il dit vraiment.
+REGLES :
+1. Reponds directement a ce que dit le client, comme dans une vraie conversation.
+2. Si tu as deja le module/logiciel/version (voir TICKET SOUMIS ci-dessus), ne les redemande JAMAIS.
+3. Si la base de connaissances contient une solution pertinente, reformule-la naturellement ("Essayez de...", "Dans ce cas, il faut...").
+4. Si tu poses une question, pose-en UNE SEULE, courte et claire.
+5. Si le client dit "j'ai pas compris" ou similaire, explique le terme precedent avec des mots simples.
+6. Utilise "vous" pour etre professionnel.
+7. Si le probleme est bloquant en production, propose d'escalader vers un technicien.
 
---- DETECTION DE CONFUSION ---
-Si le client dit : "j'ai pas compris", "c'est quoi", "je comprends pas", "tu veux dire quoi", "kesako", ou toute phrase exprimant qu'il ne comprend pas ta question precedente :
--> EXPLIQUE simplement le terme que tu as utilise
--> Exemple : si tu avais demande "le message d'erreur" et il dit "j'ai pas compris", reponds :
-   "Le message d'erreur, c'est le texte qui apparait en rouge ou dans une petite fenetre quand le logiciel bloque. Par exemple : 'Erreur SQL', 'Acces refuse', 'Impossible d'ouvrir'. Est-ce que vous voyez quelque chose comme ca sur votre ecran ?"
--> NE PASSE PAS a la question suivante avant qu'il ait compris
-
---- DETECTION D'INFORMATION ---
-Si le client donne une info (meme en langage courant, meme avec des fautes) :
--> Integre-la dans le diagnostic
--> Ne redemande pas une info deja donnee
--> Avance dans la resolution
-
---- PROPOSITION DE SOLUTION ---
-Si des tickets similaires sont presents dans le contexte :
--> Propose DIRECTEMENT une solution basee sur ces cas
--> Formule-la en langage simple, pas en jargon
--> Exemples de formulations : "D'apres les cas similaires que j'ai vus, voici ce qui a marche : ..."
-
---- QUALIFICATION (si info insuffisante) ---
-Si tu n'as vraiment pas assez d'infos pour diagnostiquer :
--> Pose UNE SEULE question, en expliquant POURQUOI tu as '';;.;..;]'.;'...;;.;.';.;.;.';/;';/';besoin de cette info
--> Exemple : "Pour vous aider, j'ai besoin de savoir ce qui s'affiche exactement a l'ecran quand ca bloque. C'est le message d'erreur, souvent en rouge ou dans une petite fenetre."
--> Si le client ne comprend toujours pas apres 2 essais -> propose quand meme une piste generale
-
-REGLES ABSOLUES :
-- Adresse-toi toujours au client par son prenom si tu le connais
-- Parle en francais simple et humain, jamais en jargon
-- Ne repete JAMAIS la meme question deux fois de suite
-- Si le bloc TICKET SOUMIS est present, tu sais deja le logiciel/module/version — ne les redemande jamais
-- Si c'est bloquant et urgent -> statut = "escalade_technique"
-
-JSON attendu (UNIQUEMENT le JSON, rien d'autre) :
-
+Reponds UNIQUEMENT avec ce JSON, sans texte avant ni apres :
 {{
-  "reponse": "Message pour l'utilisateur en francais",
-  "probleme_resume": "Resume court du probleme",
-  "module": "module ERP ou vide",
-  "type_incident": "type ou vide",
-  "niveau_urgence": "bas|moyen|haut|critique",
-  "bloquant": true,
-  "statut": "qualification|en_cours|solution_proposee|escalade_technique|resolu",
-  "solution_proposee": "Solution ou vide",
+  "reponse": "Ta reponse naturelle ici (peut etre une solution, une question, une explication)",
+  "probleme_resume": "Resume du probleme en 1 phrase courte",
+  "module": "{module_val}",
+  "type_incident": "{type_val}",
+  "niveau_urgence": "bas",
+  "bloquant": false,
+  "statut": "qualification",
+  "solution_proposee": "",
   "escalade_necessaire": false,
-  "infos_manquantes": "Infos manquantes ou vide",
-  "confidence_score": 0.0
+  "infos_manquantes": "",
+  "confidence_score": 0.75
 }}
-
-Ne reponds QUE avec le JSON, sans texte avant ni apres.
 """
 
 
@@ -189,27 +152,43 @@ def call_llm(prompt: str) -> dict:
 
 
 def parse_llm_json(raw: str) -> dict:
+    import re as _re
     cleaned = raw.strip()
-    if cleaned.startswith("```"):
-        parts = cleaned.split("```")
-        cleaned = parts[1] if len(parts) > 1 else cleaned
-        if cleaned.startswith("json"):
-            cleaned = cleaned[4:]
-    cleaned = cleaned.strip()
 
+    # Tenter l'extraction du bloc markdown ```json ... ```
+    md_match = _re.search(r"```(?:json)?\s*([\s\S]*?)```", cleaned)
+    if md_match:
+        candidate = md_match.group(1).strip()
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            pass
+
+    # Tenter l'extraction du premier objet JSON {...} dans le texte
+    json_match = _re.search(r"\{[\s\S]*\}", cleaned)
+    if json_match:
+        try:
+            return json.loads(json_match.group())
+        except json.JSONDecodeError:
+            pass
+
+    # Tenter le parse direct
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError:
-        return {
-            "reponse": cleaned or "Je n'ai pas pu produire une reponse structuree.",
-            "probleme_resume": "",
-            "module": "",
-            "type_incident": "",
-            "niveau_urgence": "moyen",
-            "bloquant": False,
-            "statut": "qualification",
-            "solution_proposee": "",
-            "escalade_necessaire": False,
-            "infos_manquantes": "",
-            "confidence_score": 0.5,
-        }
+        pass
+
+    # Dernier recours : retourner le texte brut comme réponse
+    return {
+        "reponse": cleaned or "Je n'ai pas pu produire une reponse structuree.",
+        "probleme_resume": "",
+        "module": "",
+        "type_incident": "",
+        "niveau_urgence": "moyen",
+        "bloquant": False,
+        "statut": "qualification",
+        "solution_proposee": "",
+        "escalade_necessaire": False,
+        "infos_manquantes": "",
+        "confidence_score": 0.5,
+    }
