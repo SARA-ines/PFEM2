@@ -137,6 +137,18 @@ class Notification(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class PasswordResetToken(Base):
+    """Tokens de réinitialisation de mot de passe (durée de vie 1 heure)."""
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, nullable=False)
+    token = Column(String(128), unique=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Integer, default=0)  # 0 = valide, 1 = déjà utilisé
+
+
 Base.metadata.create_all(engine)
 
 with engine.begin() as conn:

@@ -1,17 +1,25 @@
 from collections import Counter
 import base64
 from datetime import datetime, timedelta
+import email.mime.multipart
+import email.mime.text
 import hashlib
 import hmac
 import json
+import logging
 import os
 import re
 import secrets
+import smtplib
+import ssl
 import sys
+import traceback
 import time
 import unicodedata
 import uuid
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
@@ -27,7 +35,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 
 from business_logic import rewrite_rag_solution
-from database import ClientLogiciel, ConversationSession, Logiciel, LogicielVersion, Message, Notification, SessionLocal, Ticket, User
+from database import ClientLogiciel, ConversationSession, Logiciel, LogicielVersion, Message, Notification, PasswordResetToken, SessionLocal, Ticket, User
 from nlp_engine import analyze
 from preprocessing import prepare_ticket_text
 from rag_engine import rag
@@ -333,6 +341,121 @@ def full_user_name(user: User | None) -> str:
     parts = [user.first_name or "", user.last_name or ""]
     name = " ".join(part for part in parts if part).strip()
     return name or (user.username or f"Utilisateur {user.user_id}")
+
+
+# ─────────────────────────── SMTP EMAIL ───────────────────────────────────
+
+
+def _build_reset_email_html(recipient_name: str, reset_link: str) -> str:
+    return f"""<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Réinitialisation du mot de passe</title></head>
+<body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="540" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#204779,#2f67a8);padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">BIG Informatique</h1>
+          <p style="margin:6px 0 0;color:rgba(255,255,255,0.75);font-size:13px;">Support Client</p>
+        </td></tr>
+        <!-- Body -->
+        <tr><td style="padding:40px 40px 32px;">
+          <h2 style="margin:0 0 16px;color:#0f2446;font-size:20px;">Réinitialisation du mot de passe</h2>
+          <p style="margin:0 0 12px;color:#496583;font-size:15px;line-height:1.6;">
+            Bonjour <strong>{recipient_name}</strong>,
+          </p>
+          <p style="margin:0 0 24px;color:#496583;font-size:15px;line-height:1.6;">
+            Nous avons reçu une demande de réinitialisation du mot de passe associé à votre compte.
+            Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe.
+          </p>
+          <div style="text-align:center;margin:28px 0;">
+            <a href="{reset_link}" style="display:inline-block;background:linear-gradient(135deg,#1c6cff,#124fd3);color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;letter-spacing:0.02em;">
+              Réinitialiser mon mot de passe
+            </a>
+          </div>
+          <p style="margin:0 0 8px;color:#7a90ad;font-size:13px;line-height:1.6;">
+            Ce lien est valable pendant <strong>1 heure</strong>. Après expiration, vous devrez refaire une demande.
+          </p>
+          <p style="margin:0;color:#7a90ad;font-size:13px;line-height:1.6;">
+            Si vous n'avez pas demandé cette réinitialisation, ignorez cet email — votre mot de passe reste inchangé.
+          </p>
+        </td></tr>
+        <!-- Link fallback -->
+        <tr><td style="padding:0 40px 32px;">
+          <p style="margin:0;color:#a0b0c8;font-size:12px;word-break:break-all;">
+            Lien de secours : <a href="{reset_link}" style="color:#1c6cff;">{reset_link}</a>
+          </p>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="background:#f8faff;padding:20px 40px;text-align:center;border-top:1px solid #e8eef6;">
+          <p style="margin:0;color:#a0b0c8;font-size:12px;">
+            © BIG Informatique — Support automatisé. Ne pas répondre à cet email.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+
+def send_reset_email(to_email: str, recipient_name: str, token: str) -> None:
+    """Envoie l'email de réinitialisation via Gmail SMTP (STARTTLS port 587).
+    Lève une exception si l'envoi échoue — l'appelant doit la gérer."""
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
+    print(f"[SMTP DEBUG] host={smtp_host} port={smtp_port} user={smtp_user!r} password_set={bool(smtp_password)}")
+
+    if not smtp_user or not smtp_password:
+        raise RuntimeError(
+            "SMTP non configuré : renseignez SMTP_USER et SMTP_PASSWORD dans le fichier .env"
+        )
+
+    reset_link = f"{frontend_url}?reset_token={token}"
+    html_body = _build_reset_email_html(recipient_name, reset_link)
+    plain_body = (
+        f"Bonjour {recipient_name},\n\n"
+        f"Réinitialisez votre mot de passe via ce lien (valable 1 heure) :\n{reset_link}\n\n"
+        "Si vous n'avez pas fait cette demande, ignorez cet email."
+    )
+
+    msg = email.mime.multipart.MIMEMultipart("alternative")
+    msg["Subject"] = "Réinitialisation de votre mot de passe — BIG Informatique"
+    msg["From"] = f"BIG Support <{smtp_user}>"
+    msg["To"] = to_email
+    msg.attach(email.mime.text.MIMEText(plain_body, "plain", "utf-8"))
+    msg.attach(email.mime.text.MIMEText(html_body, "html", "utf-8"))
+
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_user, to_email, msg.as_string())
+            logger.info("Email de réinitialisation envoyé à %s", to_email)
+    except smtplib.SMTPAuthenticationError as exc:
+        print(traceback.format_exc())
+        raise RuntimeError(
+            "Échec de l'authentification SMTP. Vérifiez que vous utilisez un App Password Gmail "
+            "(non le mot de passe principal) et que la validation en 2 étapes est activée."
+        ) from exc
+    except smtplib.SMTPException as exc:
+        print(traceback.format_exc())
+        raise RuntimeError(f"Erreur d'envoi email (SMTP) : {exc}") from exc
+    except OSError as exc:
+        print(traceback.format_exc())
+        raise RuntimeError(
+            f"Impossible de joindre le serveur SMTP ({smtp_host}:{smtp_port}). "
+            "Vérifiez votre connexion et les paramètres SMTP."
+        ) from exc
+
 
 
 def pick_auto_technician(db) -> User | None:
@@ -2323,6 +2446,103 @@ def login(payload: LoginRequest):
             "username": user.username or "",
         },
     }
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@app.post("/auth/forgot-password")
+def forgot_password(payload: ForgotPasswordRequest):
+    addr = (payload.email or "").strip().lower()
+    if not addr:
+        raise HTTPException(status_code=400, detail="L'adresse email est obligatoire.")
+
+    try:
+        with SessionLocal() as db:
+            user = db.query(User).filter(func.lower(User.email) == addr).first()
+            if not user:
+                # Réponse générique — ne révèle pas si le compte existe
+                return {"message": "Si un compte est associé à cette adresse, un lien de réinitialisation a été envoyé."}
+
+            # Lire les données nécessaires pendant que la session est ouverte
+            recipient_name = full_user_name(user)
+
+            # Invalider les anciens tokens non utilisés pour cet utilisateur
+            db.query(PasswordResetToken).filter(
+                PasswordResetToken.user_id == user.user_id,
+                PasswordResetToken.used == 0,
+            ).update({"used": 1})
+
+            # Générer un token sécurisé
+            raw_token = secrets.token_urlsafe(40)
+            expiry = datetime.utcnow() + timedelta(hours=1)
+            reset_token = PasswordResetToken(
+                user_id=user.user_id,
+                token=raw_token,
+                expires_at=expiry,
+                used=0,
+            )
+            db.add(reset_token)
+            db.commit()
+
+        # Envoyer l'email après avoir fermé la session DB
+        send_reset_email(addr, recipient_name, raw_token)
+
+    except HTTPException:
+        raise
+    except RuntimeError as exc:
+        print(traceback.format_exc())
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Erreur inattendue : {exc}")
+
+    return {"message": "Un lien de réinitialisation a été envoyé à votre adresse email."}
+
+
+@app.post("/auth/reset-password")
+def reset_password(payload: ResetPasswordRequest):
+    token_str = (payload.token or "").strip()
+    new_pw = (payload.new_password or "").strip()
+
+    if not token_str:
+        raise HTTPException(status_code=400, detail="Token manquant.")
+    if len(new_pw) < 8:
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 8 caractères.")
+
+    now = datetime.utcnow()
+    try:
+        with SessionLocal() as db:
+            reset_tok = db.query(PasswordResetToken).filter(
+                PasswordResetToken.token == token_str,
+                PasswordResetToken.used == 0,
+                PasswordResetToken.expires_at > now,
+            ).first()
+
+            if not reset_tok:
+                raise HTTPException(status_code=400, detail="Lien invalide ou expiré. Veuillez refaire une demande.")
+
+            user = db.query(User).filter(User.user_id == reset_tok.user_id).first()
+            if not user:
+                raise HTTPException(status_code=404, detail="Utilisateur introuvable.")
+
+            # Hacher le nouveau mot de passe avec le même algorithme que l'inscription
+            user.password = hash_password(new_pw)
+            reset_tok.used = 1
+            db.commit()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Erreur inattendue : {exc}")
+
+    return {"message": "Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter."}
 
 
 @app.get("/client/profile")

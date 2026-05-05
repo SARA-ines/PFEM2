@@ -12,6 +12,8 @@ import {
   fetchNotifications,
   fetchReportsSummary,
   getStoredAuthSession,
+  forgotPassword,
+  resetPassword,
   login,
   registerClient,
   registerTechnician,
@@ -300,10 +302,13 @@ function findNearestTicket(group, tickets) {
 export default function App() {
   const storedSession = getStoredAuthSession();
   const [authSession, setAuthSession] = useState(storedSession);
-  const [view, setView] = useState("login");
   const [loginPrefill, setLoginPrefill] = useState({ role: "client", email: "" });
   const [clientUser, setClientUser] = useState(defaultClientUser);
   const [technicianUser, setTechnicianUser] = useState(defaultTechnicianUser);
+
+  // Détecte ?reset_token=... dans l'URL au chargement
+  const urlResetToken = new URLSearchParams(window.location.search).get("reset_token") || "";
+  const [view, setView] = useState(urlResetToken ? "reset-password" : "login");
 
   function handleClientRegistrationSuccess(user) {
     setClientUser({
@@ -391,6 +396,7 @@ export default function App() {
           onSuccess={handleLoginSuccess}
           onOpenClientRegistration={() => setView("registration")}
           onOpenTechnicianRegistration={() => setView("registration-technician")}
+          onForgotPassword={() => setView("forgot-password")}
           initialRole={loginPrefill.role}
           initialEmail={loginPrefill.email}
         />
@@ -398,6 +404,10 @@ export default function App() {
         <RegistrationClientView onSuccess={handleClientRegistrationSuccess} onOpenLogin={() => setView("login")} />
       ) : view === "registration-technician" ? (
         <RegistrationTechnicianView onSuccess={handleTechnicianRegistrationSuccess} onOpenLogin={() => setView("login")} />
+      ) : view === "forgot-password" ? (
+        <ForgotPasswordView onOpenLogin={() => setView("login")} />
+      ) : view === "reset-password" ? (
+        <ResetPasswordView token={urlResetToken} onOpenLogin={() => setView("login")} />
       ) : view === "client" ? (
         <ClientView currentUser={clientUser} onLogout={handleLogout} />
       ) : (
@@ -407,7 +417,7 @@ export default function App() {
   );
 }
 
-function LoginView({ onSuccess, onOpenClientRegistration, onOpenTechnicianRegistration, initialRole = "client", initialEmail = "" }) {
+function LoginView({ onSuccess, onOpenClientRegistration, onOpenTechnicianRegistration, onForgotPassword, initialRole = "client", initialEmail = "" }) {
   const [form, setForm] = useState({
     role: initialRole,
     email: initialEmail,
@@ -523,7 +533,7 @@ function LoginView({ onSuccess, onOpenClientRegistration, onOpenTechnicianRegist
         </label>
 
         <div className="login-links-row">
-          <button type="button" className="text-link">Mot de passe oublie ?</button>
+          <button type="button" className="text-link forgot-link" onClick={onForgotPassword}>Mot de passe oublie ?</button>
         </div>
 
         {message ? <p className="registration-message error">{message}</p> : null}
@@ -543,6 +553,254 @@ function LoginView({ onSuccess, onOpenClientRegistration, onOpenTechnicianRegist
     </div>
   );
 }
+
+function ForgotPasswordView({ onOpenLogin }) {
+  const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [status, setStatus] = useState("idle"); // "idle" | "success" | "error"
+  const [message, setMessage] = useState("");
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!email.trim()) {
+      setStatus("error");
+      setMessage("Veuillez saisir votre adresse email.");
+      return;
+    }
+    setSubmitting(true);
+    setStatus("idle");
+    setMessage("");
+    try {
+      await forgotPassword(email.trim());
+      setStatus("success");
+      setMessage("Si un compte est associé à cette adresse, vous recevrez un lien de réinitialisation sous peu.");
+    } catch (err) {
+      setStatus("error");
+      setMessage(err.message || "Une erreur est survenue. Veuillez réessayer.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="login-shell">
+      <section className="registration-hero">
+        <p className="registration-kicker">Sécurité</p>
+        <h1>Mot de passe oublié</h1>
+        <p>Saisissez votre adresse email pour recevoir un lien de réinitialisation.</p>
+      </section>
+
+      <form className="login-card forgot-card" onSubmit={handleSubmit}>
+        {status === "success" ? (
+          <div className="forgot-success-state">
+            <div className="forgot-success-icon">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            </div>
+            <h3>Email envoyé !</h3>
+            <p>{message}</p>
+            <p className="forgot-check-spam">Vérifiez aussi votre dossier spam.</p>
+            <button type="button" className="registration-submit" onClick={onOpenLogin} style={{ marginTop: 8 }}>
+              Retour à la connexion
+              <ArrowRightIcon />
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="forgot-intro">
+              <div className="forgot-icon-wrap">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              </div>
+              <p>Entrez l&apos;email associé à votre compte et nous vous enverrons les instructions de réinitialisation.</p>
+            </div>
+
+            <label className="registration-field">
+              <span>Adresse email</span>
+              <div className="registration-input">
+                <MailSmall />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="votre@email.com"
+                  autoFocus
+                  disabled={submitting}
+                />
+              </div>
+            </label>
+
+            {status === "error" && message && (
+              <p className="registration-message error">{message}</p>
+            )}
+
+            <button type="submit" className="registration-submit" disabled={submitting}>
+              {submitting ? "Envoi en cours..." : "Envoyer le lien"}
+              {!submitting && <ArrowRightIcon />}
+            </button>
+
+            <div className="login-footer">
+              <p>Vous vous souvenez de votre mot de passe ?</p>
+              <button type="button" className="text-link login-register-link" onClick={onOpenLogin}>
+                Retour à la connexion
+              </button>
+            </div>
+          </>
+        )}
+      </form>
+    </div>
+  );
+}
+
+
+function ResetPasswordView({ token, onOpenLogin }) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [status, setStatus] = useState("idle"); // "idle" | "success" | "error"
+  const [message, setMessage] = useState("");
+  const [showPw, setShowPw] = useState(false);
+
+  const checks = [
+    { label: "Au moins 8 caractères", ok: password.length >= 8 },
+    { label: "Majuscule et minuscule", ok: /[a-z]/.test(password) && /[A-Z]/.test(password) },
+    { label: "Au moins un chiffre", ok: /\d/.test(password) },
+    { label: "Au moins un caractère spécial", ok: /[^A-Za-z0-9]/.test(password) },
+  ];
+  const allChecksOk = checks.every((c) => c.ok);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!allChecksOk) { setStatus("error"); setMessage("Le mot de passe ne respecte pas les critères."); return; }
+    if (password !== confirm) { setStatus("error"); setMessage("Les mots de passe ne correspondent pas."); return; }
+    if (!token) { setStatus("error"); setMessage("Token manquant. Veuillez refaire une demande."); return; }
+
+    setSubmitting(true);
+    setStatus("idle");
+    setMessage("");
+    try {
+      const res = await resetPassword(token, password);
+      setStatus("success");
+      setMessage(res.message || "Mot de passe réinitialisé avec succès.");
+      // Nettoyer le token de l'URL sans rechargement
+      window.history.replaceState({}, "", window.location.pathname);
+    } catch (err) {
+      setStatus("error");
+      setMessage(err.message || "Une erreur est survenue.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (!token) {
+    return (
+      <div className="login-shell">
+        <section className="registration-hero">
+          <p className="registration-kicker">Erreur</p>
+          <h1>Lien invalide</h1>
+          <p>Ce lien de réinitialisation est manquant ou corrompu.</p>
+        </section>
+        <div className="login-card forgot-card" style={{ textAlign: "center" }}>
+          <button type="button" className="registration-submit" onClick={onOpenLogin}>
+            Retour à la connexion <ArrowRightIcon />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="login-shell">
+      <section className="registration-hero">
+        <p className="registration-kicker">Sécurité</p>
+        <h1>Nouveau mot de passe</h1>
+        <p>Choisissez un mot de passe fort pour sécuriser votre compte.</p>
+      </section>
+
+      <form className="login-card forgot-card" onSubmit={handleSubmit}>
+        {status === "success" ? (
+          <div className="forgot-success-state">
+            <div className="forgot-success-icon">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            </div>
+            <h3>Mot de passe mis à jour !</h3>
+            <p>{message}</p>
+            <button type="button" className="registration-submit" onClick={onOpenLogin} style={{ marginTop: 8 }}>
+              Se connecter <ArrowRightIcon />
+            </button>
+          </div>
+        ) : (
+          <>
+            <label className="registration-field">
+              <span>Nouveau mot de passe</span>
+              <div className="registration-input">
+                <LockOutline />
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Créer un mot de passe"
+                  autoFocus
+                  disabled={submitting}
+                />
+                <button type="button" style={{ background: "none", border: "none", cursor: "pointer", padding: "0 4px", color: "#5d79a3" }} onClick={() => setShowPw((v) => !v)}>
+                  {showPw ? "🙈" : "👁"}
+                </button>
+              </div>
+            </label>
+
+            {password.length > 0 && (
+              <ul className="reset-checks">
+                {checks.map((c) => (
+                  <li key={c.label} className={c.ok ? "ok" : "nok"}>
+                    <span>{c.ok ? "✓" : "✗"}</span> {c.label}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <label className="registration-field">
+              <span>Confirmer le mot de passe</span>
+              <div className="registration-input">
+                <LockOutline />
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  placeholder="Répéter le mot de passe"
+                  disabled={submitting}
+                />
+              </div>
+            </label>
+
+            {status === "error" && message && (
+              <p className="registration-message error">{message}</p>
+            )}
+
+            <button type="submit" className="registration-submit" disabled={submitting || !allChecksOk || !confirm}>
+              {submitting ? "Mise à jour..." : "Enregistrer le mot de passe"}
+              {!submitting && <ArrowRightIcon />}
+            </button>
+
+            <div className="login-footer">
+              <button type="button" className="text-link login-register-link" onClick={onOpenLogin}>
+                Annuler — retour à la connexion
+              </button>
+            </div>
+          </>
+        )}
+      </form>
+    </div>
+  );
+}
+
 
 function RegistrationClientView({ onSuccess, onOpenLogin }) {
   const [form, setForm] = useState({

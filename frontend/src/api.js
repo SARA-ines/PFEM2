@@ -85,6 +85,22 @@ export function login(payload) {
   });
 }
 
+export function forgotPassword(email) {
+  return request("/auth/forgot-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function resetPassword(token, newPassword) {
+  return request("/auth/reset-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+}
+
 export function createClientTicket(payload) {
   return request("/client/tickets", {
     method: "POST",

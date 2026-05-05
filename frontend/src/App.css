@@ -350,7 +350,136 @@ textarea {
   color: #1f5fff;
   font-weight: 700;
   cursor: pointer;
+  text-decoration: none;
+  transition: color 140ms ease, opacity 140ms ease;
 }
+
+.text-link:hover {
+  color: #0f3fcc;
+  text-decoration: underline;
+  opacity: 0.9;
+}
+
+.text-link:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* Lien "Mot de passe oublié ?" avec taille légèrement plus petite */
+.forgot-link {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* ── Page mot de passe oublié ── */
+.forgot-card {
+  max-width: 480px;
+}
+
+.forgot-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, #eff4ff 0%, #e8f0fe 100%);
+  border: 1px solid #c7d8ff;
+  border-radius: 14px;
+  margin-bottom: 8px;
+}
+
+.forgot-icon-wrap {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+}
+
+.forgot-intro p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #3a5a8a;
+  line-height: 1.55;
+  padding-top: 4px;
+}
+
+/* État succès */
+.forgot-success-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 16px 0 8px;
+  gap: 10px;
+}
+
+.forgot-success-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #dcfce7 0%, #d1fae5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  box-shadow: 0 4px 16px rgba(22, 163, 74, 0.15);
+}
+
+.forgot-success-state h3 {
+  margin: 0;
+  color: #15803d;
+  font-size: 1.3rem;
+}
+
+.forgot-success-state p {
+  margin: 0;
+  color: #4a5568;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  max-width: 340px;
+}
+
+.forgot-check-spam {
+  font-size: 0.8rem !important;
+  color: #94a3b8 !important;
+  font-style: italic;
+}
+
+/* ── Checks de sécurité mot de passe (ResetPasswordView) ── */
+.reset-checks {
+  list-style: none;
+  margin: -4px 0 12px;
+  padding: 10px 14px;
+  background: #f8faff;
+  border: 1px solid #e2eaf6;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.reset-checks li {
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: color 160ms;
+}
+
+.reset-checks li span {
+  font-weight: 800;
+  font-size: 0.85rem;
+  width: 14px;
+  text-align: center;
+}
+
+.reset-checks li.ok  { color: #16a34a; }
+.reset-checks li.nok { color: #94a3b8; }
 
 .login-footer {
   margin-top: 28px;
